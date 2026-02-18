@@ -142,9 +142,12 @@ if df_main is not None:
     display_data = []
 
     # ONLY ONE LOOP IS NEEDED
-    for lvl, name, ur_v, sc_v, st_v, obc_v, ews_v, tot_v, is_cpt, is_stat in posts:
-        # 1. Filter remaining candidates FAST
-        pool = df_final[~df_final.index.isin(allocated_indices)]
+for lvl, name, ur_v, sc_v, st_v, obc_v, ews_v, tot_v, is_cpt, is_stat in posts:
+        # --- THE FIX: Statistics posts check the WHOLE database ---
+        if is_stat:
+            pool = df_final.copy() # Use everyone for JSO/SI
+        else:
+            pool = df_final[~df_final.index.isin(allocated_indices)] # Use leftovers for General
         
         # 2. Filter eligibility using pre-calculated columns
         eligible = pool[pool['Pass_C']] if is_cpt else pool[pool['Pass_B']]
@@ -155,7 +158,10 @@ if df_main is not None:
         
         # 3. UR Selection
         ur_pool = eligible.head(ur_v)
-        allocated_indices.update(ur_pool.index)
+        # Only remove from pool if NOT a statistics post to keep general list separate
+        if not is_stat:
+            allocated_indices.update(ur_pool.index)
+            
         ur_cut = ur_pool[score_col].min() if not ur_pool.empty else 0
         
         # 4. Category Selection
@@ -163,6 +169,24 @@ if df_main is not None:
         target_vac = {'SC': sc_v, 'ST': st_v, 'OBC': obc_v, 'EWS': ews_v}.get(u_cat, 0)
         cat_pool = rem[rem['Category'] == u_cat].head(target_vac)
         cat_cut = cat_pool[score_col].min() if not cat_pool.empty else 0
+        
+        # 5. Prediction logic
+        req_comp = u_c_min if is_cpt else u_b_min
+        if u_comp < req_comp: 
+            chance = "❌ FAIL (Comp)"
+        elif is_stat and u_stat == 0: 
+            chance = "⚠️ Stat Paper Absent"
+        elif user_score >= ur_cut and ur_cut > 0: 
+            chance = "⭐ HIGH (UR Merit)"
+        elif user_score >= cat_cut and cat_cut > 0: 
+            chance = "✅ HIGH CHANCE"
+        else: 
+            chance = "📉 LOW CHANCE"
+
+        display_data.append({
+            "Level": lvl, "Post": name, "UR Cut": ur_cut if ur_cut > 0 else "N/A",
+            "Cat Cut": cat_cut if cat_cut > 0 else "N/A", "Prediction": chance
+        })
         
         # 5. Prediction logic 
         req_comp = u_c_min if is_cpt else u_b_min
@@ -209,6 +233,7 @@ else:
   
     st.dataframe(pd.DataFrame(display_data), use_container_width=True, hide_index=True)
     
+
 
 
 
