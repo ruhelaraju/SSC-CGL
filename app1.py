@@ -201,7 +201,7 @@ for lvl, name, ur_v, sc_v, st_v, obc_v, ews_v, tot_v, is_cpt, is_stat in posts:
     # --- UI RENDERING (AFTER THE LOOP) ---
         st.subheader("📋 Post-wise Allocation Report")
     
-    final_df = pd.DataFrame(display_data)
+        final_df = pd.DataFrame(display_data)
 
     # 1. Search Bar
     search_query = st.text_input("🔍 Search Post Name (e.g. ASO, Inspector)", "")
@@ -220,6 +220,7 @@ else:
   
     st.dataframe(pd.DataFrame(display_data), use_container_width=True, hide_index=True)
     
+
 
 
 
