@@ -142,6 +142,7 @@ if df_main is not None:
     allocated_indices = set()
     display_data = []
 
+    # ONLY ONE LOOP IS NEEDED
     for lvl, name, ur_v, sc_v, st_v, obc_v, ews_v, tot_v, is_cpt, is_stat in posts:
         # 1. Filter remaining candidates FAST
         pool = df_final[~df_final.index.isin(allocated_indices)]
@@ -164,46 +165,43 @@ if df_main is not None:
         cat_pool = rem[rem['Category'] == u_cat].head(target_vac)
         cat_cut = cat_pool[score_col].min() if not cat_pool.empty else 0
         
-        # 5. Prediction logic (Kept exactly as requested)
+        # 5. Prediction logic 
         req_comp = u_c_min if is_cpt else u_b_min
-        if u_comp < req_comp: chance = "❌ FAIL (Comp)"
-        elif is_stat and u_stat == 0: chance = "⚠️ Stat Paper Absent"
-        elif user_score >= ur_cut and ur_cut > 0: chance = "⭐ HIGH (UR Merit)"
-        elif user_score >= cat_cut and cat_cut > 0: chance = "✅ HIGH CHANCE"
-        else: chance = "📉 LOW CHANCE"
+        if u_comp < req_comp: 
+            chance = "❌ FAIL (Comp)"
+        elif is_stat and u_stat == 0: 
+            chance = "⚠️ Stat Paper Absent"
+        elif user_score >= ur_cut and ur_cut > 0: 
+            chance = "⭐ HIGH (UR Merit)"
+        elif user_score >= cat_cut and cat_cut > 0: 
+            chance = "✅ HIGH CHANCE"
+        else: 
+            chance = "📉 LOW CHANCE"
 
+        # Add to list only ONCE
         display_data.append({
-            "Level": lvl, "Post": name, "UR Cut": ur_cut if ur_cut > 0 else "N/A",
-            "Cat Cut": cat_cut if cat_cut > 0 else "N/A", "Prediction": chance
-        })
-
-    st.subheader("📋 Post-wise Allocation Report")
-    # ... (Your loop ends here) ...
-    for lvl, name, ur_v, sc_v, st_v, obc_v, ews_v, tot_v, is_cpt, is_stat in posts:
-        # (All your calculation logic stays here)
-        # ...
-        display_data.append({
-            "Level": lvl, "Post": name, "Type": "Stat" if is_stat else "Main",
+            "Level": lvl, 
+            "Post": name, 
+            "Type": "Stat" if is_stat else "Main",
             "UR Cutoff": ur_cut if ur_cut > 0 else "N/A",
-            "Cat Cutoff": cat_cut if cat_cut > 0 else "N/A",
+            "Cat Cutoff": cat_cut if cat_cut > 0 else "N/A", 
             "Prediction": chance
         })
 
-    # --- PASTE THE NEW CODE HERE (Align it with the 'for' loop) ---
+    # --- UI RENDERING (AFTER THE LOOP) ---
     st.subheader("📋 Post-wise Allocation Report")
     
-    # 1. Create the DataFrame
     final_df = pd.DataFrame(display_data)
 
-    # 2. Search Bar
+    # 1. Search Bar
     search_query = st.text_input("🔍 Search Post Name (e.g. ASO, Inspector)", "")
     if search_query:
         final_df = final_df[final_df['Post'].str.contains(search_query, case=False)]
 
-    # 3. Display the Table (Crucial!)
+    # 2. Display Table
     st.dataframe(final_df, use_container_width=True, hide_index=True)
 
-    # 4. Download Button
+    # 3. Download Button
     csv_data = final_df.to_csv(index=False).encode('utf-8')
     st.download_button("📂 Download Prediction Report", data=csv_data, file_name="SSC_Results.csv", mime="text/csv")
 
@@ -212,6 +210,7 @@ else:
   
     st.dataframe(pd.DataFrame(display_data), use_container_width=True, hide_index=True)
     
+
 
 
 
