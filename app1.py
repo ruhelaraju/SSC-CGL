@@ -105,7 +105,6 @@ def get_full_vacancy_list():
         ("L-4", "BRO - UDC/SSA", 20, 1, 0, 0, 4, 25, False, False),
         ("L-4", "Agriculture - UDC/SSA", 2, 0, 0, 0, 1, 3, False, False),
         ("L-4", "Health - UDC/SSA", 1, 0, 0, 0, 0, 1, False, False),
-        ("L-4", "Dept of Post - PA/SA", 0, 0, 0, 0, 0, 0, True, False)
     ]
 
 # --- FILE NAMES ---
@@ -210,6 +209,7 @@ else:
   
     st.dataframe(pd.DataFrame(display_data), use_container_width=True, hide_index=True)
     
+
 
 
 
