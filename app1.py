@@ -178,5 +178,23 @@ if df_main is not None:
         })
 
     st.subheader("📋 Post-wise Allocation Report")
+    # --- COPY AND PASTE THIS BEFORE YOUR TABLE DISPLAY ---
+    search_query = st.text_input("🔍 Search Post Name (e.g. ASO, Inspector, Auditor)", "")
+
+    # Filter the display data based on search
+    final_df = pd.DataFrame(display_data)
+    if search_query:
+    final_df = final_df[final_df['Post'].str.contains(search_query, case=False)]
+    # -----------------------------------------------------
     st.dataframe(pd.DataFrame(display_data), use_container_width=True, hide_index=True)
+    # --- COPY AND PASTE THIS TO ADD DOWNLOAD OPTION ---
+csv_data = final_df.to_csv(index=False).encode('utf-8')
+st.download_button(
+    label="📂 Download Prediction Report",
+    data=csv_data,
+    file_name="SSC_CGL_2025_Predictions.csv",
+    mime="text/csv",
+)
+# --------------------------------------------------
+
 
