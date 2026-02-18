@@ -178,24 +178,40 @@ if df_main is not None:
         })
 
     st.subheader("📋 Post-wise Allocation Report")
-    # --- COPY AND PASTE THIS BEFORE YOUR TABLE DISPLAY ---
-    search_query = st.text_input("🔍 Search Post Name (e.g. ASO, Inspector, Auditor)", "")
+    # ... (Your loop ends here) ...
+    for lvl, name, ur_v, sc_v, st_v, obc_v, ews_v, tot_v, is_cpt, is_stat in posts:
+        # (All your calculation logic stays here)
+        # ...
+        display_data.append({
+            "Level": lvl, "Post": name, "Type": "Stat" if is_stat else "Main",
+            "UR Cutoff": ur_cut if ur_cut > 0 else "N/A",
+            "Cat Cutoff": cat_cut if cat_cut > 0 else "N/A",
+            "Prediction": chance
+        })
 
-    # Filter the display data based on search
+    # --- PASTE THE NEW CODE HERE (Align it with the 'for' loop) ---
+    st.subheader("📋 Post-wise Allocation Report")
+    
+    # 1. Create the DataFrame
     final_df = pd.DataFrame(display_data)
-if search_query:
-    final_df = final_df[final_df['Post'].str.contains(search_query, case=False)]
-    # -----------------------------------------------------
+
+    # 2. Search Bar
+    search_query = st.text_input("🔍 Search Post Name (e.g. ASO, Inspector)", "")
+    if search_query:
+        final_df = final_df[final_df['Post'].str.contains(search_query, case=False)]
+
+    # 3. Display the Table (Crucial!)
+    st.dataframe(final_df, use_container_width=True, hide_index=True)
+
+    # 4. Download Button
+    csv_data = final_df.to_csv(index=False).encode('utf-8')
+    st.download_button("📂 Download Prediction Report", data=csv_data, file_name="SSC_Results.csv", mime="text/csv")
+
+else:
+    st.error(f"File '{MAIN_FILE}' not found!")
+  
     st.dataframe(pd.DataFrame(display_data), use_container_width=True, hide_index=True)
-    # --- COPY AND PASTE THIS TO ADD DOWNLOAD OPTION ---
-csv_data = final_df.to_csv(index=False).encode('utf-8')
-st.download_button(
-    label="📂 Download Prediction Report",
-    data=csv_data,
-    file_name="SSC_CGL_2025_Predictions.csv",
-    mime="text/csv",
-)
-# --------------------------------------------------
+    
 
 
 
