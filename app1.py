@@ -24,8 +24,7 @@ def load_and_clean_data(file_name):
         df['Computer Marks'] = pd.to_numeric(df['Computer Marks'], errors='coerce')
         df = df.dropna(subset=['Main Paper Marks', 'Category', 'Computer Marks'])
 
-        # PRE-CALCULATE COMPUTER ELIGIBILITY (The "Speed Secret")
-        # Instead of checking row-by-row later, we do it once for everyone now.
+        # Pre-calculate Computer Pass status for speed
         rules = {'UR': (18, 27), 'OBC': (15, 24), 'EWS': (15, 24), 'SC': (12, 21), 'ST': (12, 21)}
         
         def get_pass_status(row):
@@ -33,7 +32,6 @@ def load_and_clean_data(file_name):
             return pd.Series([row['Computer Marks'] >= b, row['Computer Marks'] >= c])
 
         df[['Pass_B', 'Pass_C']] = df.apply(get_pass_status, axis=1)
-        
         return df, key_col
     except Exception as e:
         st.error(f"Error loading {file_name}: {e}")
@@ -113,16 +111,19 @@ STAT_FILE = "CSV - SSC CGL Mains 2025 Statistics Paper Marks List (1).csv"
 
 st.title("📊 SSC CGL 2025 Optimized Predictor")
 
+# --- SIDEBAR ---
 st.sidebar.header("Step 1: Your Profile")
 u_marks = st.sidebar.number_input("Main Paper Marks", 0.0, 390.0, 310.0)
 u_stat = st.sidebar.number_input("Statistics Marks", 0.0, 200.0, 0.0)
 u_cat = st.sidebar.selectbox("Category", ["UR", "OBC", "EWS", "SC", "ST"])
 u_comp = st.sidebar.number_input("Computer Marks", 0.0, 60.0, 25.0)
 
+# Load Data
 df_main, main_key = load_and_clean_data(MAIN_FILE)
 df_stat, stat_key = load_stat_data(STAT_FILE)
 
 if df_main is not None:
+    # Handle Statistics Merge
     if df_stat is not None:
         df_final = pd.merge(df_main, df_stat, left_on=main_key, right_on=stat_key, how='left').fillna(0)
         df_final['Total_Stat_Marks'] = df_final['Main Paper Marks'] + df_final['Stat Marks']
@@ -130,6 +131,7 @@ if df_main is not None:
         df_final = df_main.copy()
         df_final['Total_Stat_Marks'] = df_final['Main Paper Marks']
 
+    # Rank Display
     o_rank = df_main[df_main['Main Paper Marks'] > u_marks].shape[0] + 1
     st.sidebar.metric("Your Global Rank", f"#{o_rank}")
 
@@ -141,36 +143,33 @@ if df_main is not None:
     allocated_indices = set()
     display_data = []
 
-    # ONLY ONE LOOP IS NEEDED
-for lvl, name, ur_v, sc_v, st_v, obc_v, ews_v, tot_v, is_cpt, is_stat in posts:
-        # --- THE FIX: Statistics posts check the WHOLE database ---
+    # Calculation Loop
+    for lvl, name, ur_v, sc_v, st_v, obc_v, ews_v, tot_v, is_cpt, is_stat in posts:
+        # Check against whole pool for Stat posts, leftover pool for others
         if is_stat:
-            pool = df_final.copy() # Use everyone for JSO/SI
+            pool = df_final.copy()
         else:
-            pool = df_final[~df_final.index.isin(allocated_indices)] # Use leftovers for General
+            pool = df_final[~df_final.index.isin(allocated_indices)]
         
-        # 2. Filter eligibility using pre-calculated columns
         eligible = pool[pool['Pass_C']] if is_cpt else pool[pool['Pass_B']]
         
         score_col = 'Total_Stat_Marks' if is_stat else 'Main Paper Marks'
         user_score = (u_marks + u_stat) if is_stat else u_marks
         eligible = eligible.sort_values(by=score_col, ascending=False)
         
-        # 3. UR Selection
+        # UR Selection
         ur_pool = eligible.head(ur_v)
-        # Only remove from pool if NOT a statistics post to keep general list separate
         if not is_stat:
             allocated_indices.update(ur_pool.index)
-            
         ur_cut = ur_pool[score_col].min() if not ur_pool.empty else 0
         
-        # 4. Category Selection
+        # Category Selection
         rem = eligible[~eligible.index.isin(ur_pool.index)]
         target_vac = {'SC': sc_v, 'ST': st_v, 'OBC': obc_v, 'EWS': ews_v}.get(u_cat, 0)
         cat_pool = rem[rem['Category'] == u_cat].head(target_vac)
         cat_cut = cat_pool[score_col].min() if not cat_pool.empty else 0
         
-        # 5. Prediction logic
+        # Prediction Logic
         req_comp = u_c_min if is_cpt else u_b_min
         if u_comp < req_comp: 
             chance = "❌ FAIL (Comp)"
@@ -184,12 +183,6 @@ for lvl, name, ur_v, sc_v, st_v, obc_v, ews_v, tot_v, is_cpt, is_stat in posts:
             chance = "📉 LOW CHANCE"
 
         display_data.append({
-            "Level": lvl, "Post": name, "UR Cut": ur_cut if ur_cut > 0 else "N/A",
-            "Cat Cut": cat_cut if cat_cut > 0 else "N/A", "Prediction": chance
-        })
-        
-        # Add to list only ONCE
-        display_data.append({
             "Level": lvl, 
             "Post": name, 
             "Type": "Stat" if is_stat else "Main",
@@ -198,34 +191,20 @@ for lvl, name, ur_v, sc_v, st_v, obc_v, ews_v, tot_v, is_cpt, is_stat in posts:
             "Prediction": chance
         })
 
-    # --- UI RENDERING (AFTER THE LOOP) ---
-        st.subheader("📋 Post-wise Allocation Report")
-    
-        final_df = pd.DataFrame(display_data)
+    # --- UI RENDERING ---
+    st.subheader("📋 Post-wise Allocation Report")
+    final_df = pd.DataFrame(display_data)
 
-    # 1. Search Bar
-    search_query = st.text_input("🔍 Search Post Name (e.g. ASO, Inspector)", "")
+    search_query = st.text_input("🔍 Search Post Name", "")
     if search_query:
         final_df = final_df[final_df['Post'].str.contains(search_query, case=False)]
 
-    # 2. Display Table
     st.dataframe(final_df, use_container_width=True, hide_index=True)
 
-    # 3. Download Button
+    # Download
     csv_data = final_df.to_csv(index=False).encode('utf-8')
     st.download_button("📂 Download Prediction Report", data=csv_data, file_name="SSC_Results.csv", mime="text/csv")
 
 else:
-    st.error(f"File '{MAIN_FILE}' not found!")
+    st.error(f"File '{MAIN_FILE}' not found! Please ensure your CSV files are in the same folder.")
   
-    st.dataframe(pd.DataFrame(display_data), use_container_width=True, hide_index=True)
-    
-
-
-
-
-
-
-
-
-
