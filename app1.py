@@ -188,19 +188,6 @@ for lvl, name, ur_v, sc_v, st_v, obc_v, ews_v, tot_v, is_cpt, is_stat in posts:
             "Cat Cut": cat_cut if cat_cut > 0 else "N/A", "Prediction": chance
         })
         
-        # 5. Prediction logic 
-        req_comp = u_c_min if is_cpt else u_b_min
-        if u_comp < req_comp: 
-            chance = "❌ FAIL (Comp)"
-        elif is_stat and u_stat == 0: 
-            chance = "⚠️ Stat Paper Absent"
-        elif user_score >= ur_cut and ur_cut > 0: 
-            chance = "⭐ HIGH (UR Merit)"
-        elif user_score >= cat_cut and cat_cut > 0: 
-            chance = "✅ HIGH CHANCE"
-        else: 
-            chance = "📉 LOW CHANCE"
-
         # Add to list only ONCE
         display_data.append({
             "Level": lvl, 
@@ -233,6 +220,7 @@ else:
   
     st.dataframe(pd.DataFrame(display_data), use_container_width=True, hide_index=True)
     
+
 
 
 
