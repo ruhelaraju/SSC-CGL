@@ -75,10 +75,37 @@ def get_full_vacancy_list():
         ("L-6", "CBDT - Office Superintendent", 2766, 1012, 496, 1822, 657, 6753, False, False),
         ("L-6", "RGI - Statistical Investigator Gr. II", 50, 18, 12, 28, 10, 118, False, True),
         ("L-6", "MoSPI - Junior Statistical Officer", 124, 47, 15, 36, 27, 249, False, True),
+        ("L-6", "ED - Assistant", 0, 0, 0, 3, 0, 3, False, False),
+        ("L-6", "TRAI - Assistant", 2, 1, 0, 0, 0, 3, False, False),
+        ("L-6", "Official Language - Assistant", 4, 0, 0, 1, 0, 5, False, False),
+        ("L-6", "MCA - Assistant", 0, 1, 0, 0, 0, 1, False, False),
+        ("L-6", "Mines - Assistant", 11, 2, 2, 3, 4, 22, True, False),
+        ("L-6", "Textiles - Assistant", 1, 0, 0, 0, 0, 1, False, False),
+        ("L-6", "Indian Coast Guard - Assistant", 8, 3, 1, 5, 1, 18, False, False),
+        ("L-6", "DFSS - Assistant", 1, 0, 0, 1, 1, 3, False, False),
+        ("L-6", "NCB - ASO", 7, 1, 1, 2, 0, 11, False, False),
+        ("L-6", "NCB - Sub-Inspector/JIO", 10, 3, 4, 8, 5, 30, False, False),
+        ("L-6", "NIA - Sub Inspector", 6, 2, 1, 3, 2, 14, False, False),
+        ("L-6", "MoSPI - Assistant", 0, 0, 0, 2, 0, 2, False, False),
         ("L-5", "CGDA - Auditor", 477, 176, 88, 316, 117, 1174, False, False),
+        ("L-5", "C&AG - Accountant", 86, 31, 17, 28, 18, 180, False, False),
+        ("L-5", "Posts - Accountant", 42, 13, 6, 12, 3, 76, False, False),
+        ("L-5", "CGCA - Accountant", 15, 6, 3, 9, 3, 36, False, False),
         ("L-4", "CBIC - Tax Assistant", 256, 136, 82, 203, 94, 771, True, False),
         ("L-4", "CBDT - Tax Assistant", 572, 171, 80, 340, 86, 1249, False, False),
-        # ... Other posts can be added here
+        ("L-4", "MSME - UDC/SSA", 25, 4, 5, 16, 5, 55, False, False),
+        ("L-4", "Science & Tech - UDC/SSA", 24, 9, 4, 16, 6, 59, False, False),
+        ("L-4", "CBN - UDC/SSA", 12, 2, 0, 5, 2, 21, False, False),
+        ("L-4", "CBN - Sub-Inspector", 11, 2, 0, 6, 0, 19, False, False),
+        ("L-4", "Mines - UDC/SSA", 13, 2, 3, 4, 4, 26, False, False),
+        ("L-4", "DGDE - UDC/SSA", 7, 2, 1, 3, 1, 14, False, False),
+        ("L-4", "MeitY - UDC/SSA", 5, 1, 1, 2, 1, 10, False, False),
+        ("L-4", "Textiles - UDC/SSA", 4, 0, 1, 1, 2, 8, False, False),
+        ("L-4", "Water Resources - UDC/SSA", 5, 0, 0, 0, 0, 5, False, False),
+        ("L-4", "BRO - UDC/SSA", 20, 1, 0, 0, 4, 25, False, False),
+        ("L-4", "Agriculture - UDC/SSA", 2, 0, 0, 0, 1, 3, False, False),
+        ("L-4", "Health - UDC/SSA", 1, 0, 0, 0, 0, 1, False, False),
+        ("L-4", "Dept of Post - PA/SA", 0, 0, 0, 0, 0, 0, True, False)
     ]
 
 # --- FILE NAMES ---
@@ -152,3 +179,4 @@ if df_main is not None:
 
     st.subheader("📋 Post-wise Allocation Report")
     st.dataframe(pd.DataFrame(display_data), use_container_width=True, hide_index=True)
+
