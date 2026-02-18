@@ -183,7 +183,7 @@ if df_main is not None:
 
     # Filter the display data based on search
     final_df = pd.DataFrame(display_data)
-    if search_query:
+if search_query:
     final_df = final_df[final_df['Post'].str.contains(search_query, case=False)]
     # -----------------------------------------------------
     st.dataframe(pd.DataFrame(display_data), use_container_width=True, hide_index=True)
@@ -196,5 +196,6 @@ st.download_button(
     mime="text/csv",
 )
 # --------------------------------------------------
+
 
 
