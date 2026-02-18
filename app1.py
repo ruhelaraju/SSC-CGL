@@ -79,7 +79,7 @@ def get_full_vacancy_list():
         ("L-5", "C&AG - Accountant", 86, 31, 17, 28, 18, 180, False, False),
         ("L-5", "Posts - Accountant", 42, 13, 6, 12, 3, 76, False, False),
         ("L-5", "CGCA - Accountant", 15, 6, 3, 9, 3, 36, False, False),
-        ("L-4", "CBIC - Tax Assistant", 256, 136, 82, 203, 94, 771, True, False),
+        ("L-4", "CBIC - Tax Assistant", 256, 136, 82, 203, 94, 771, False, False),
         ("L-4", "CBDT - Tax Assistant", 572, 171, 80, 340, 86, 1249, False, False),
         ("L-4", "MSME - UDC/SSA", 25, 4, 5, 16, 5, 55, False, False),
         ("L-4", "Science & Tech - UDC/SSA", 24, 9, 4, 16, 6, 59, False, False),
@@ -172,4 +172,5 @@ if df_main is not None:
     st.dataframe(final_df, use_container_width=True, hide_index=True)
 else:
     st.error(f"File '{MAIN_FILE}' not found!")
+
 
