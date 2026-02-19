@@ -121,7 +121,6 @@ if df_main is not None:
     cutoffs_rules = {'UR': (18, 27), 'OBC': (15, 24), 'EWS': (15, 24), 'SC': (12, 21), 'ST': (12, 21)}
     u_b_min, u_c_min = cutoffs_rules.get(u_cat, (12, 21))
 
-    # --- PART 4: PROCESS POSTS IN DESCENDING PAY LEVEL ---
     posts = get_full_vacancy_list()
     posts_df = pd.DataFrame(posts, columns=[
         'Level', 'Post', 'UR', 'SC', 'ST', 'OBC', 'EWS', 'Total', 'IsCPT', 'IsStat'
@@ -144,9 +143,6 @@ if df_main is not None:
         ur_v, sc_v, st_v, obc_v, ews_v = row['UR'], row['SC'], row['ST'], row['OBC'], row['EWS']
         is_cpt, is_stat = row['IsCPT'], row['IsStat']
 
-        # Initialize user category cutoff
-        user_cat_cut = 0
-
         # Candidates not yet allocated
         pool = global_pool[~global_pool.index.isin(allocated_indices)]
         score_col = 'Total_Stat_Marks' if is_stat else 'Main Paper Marks'
@@ -159,6 +155,7 @@ if df_main is not None:
 
         # --- Category Allocation ---
         cat_v_map = {'SC': sc_v, 'ST': st_v, 'OBC': obc_v, 'EWS': ews_v}
+        user_cat_cut = 0
         for cat, vac in cat_v_map.items():
             if vac == 0:
                 continue
@@ -182,6 +179,7 @@ if df_main is not None:
         else:
             chance = "📉 LOW CHANCE"
 
+        # --- Display ---
         display_data.append({
             "Level": lvl,
             "Post": name,
