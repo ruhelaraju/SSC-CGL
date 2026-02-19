@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import os
-from fpdf import FPDF
 import io
 
 # --- PAGE CONFIG ---
@@ -204,6 +203,7 @@ full_df = full_df.sort_values(['PayLevelNum', 'Post'], ascending=[False, True])
 st.subheader("📊 Full Post-wise Cutoff Table + Your Prediction")
 st.dataframe(full_df.drop(columns='PayLevelNum'), use_container_width=True, hide_index=True)
 
+from fpdf import FPDF
 # --- FUNCTION TO CONVERT DATAFRAME TO PDF ---
 def df_to_pdf(df, title="SSC CGL 2025 Cutoff Report"):
     pdf = FPDF()
@@ -245,6 +245,7 @@ st.download_button(
     file_name="SSC_CGL_2025_Cutoff_Report.pdf",
     mime="application/pdf"
 )
+
 
 
 
