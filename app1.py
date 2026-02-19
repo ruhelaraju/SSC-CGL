@@ -205,15 +205,13 @@ st.dataframe(full_df.drop(columns='PayLevelNum'), use_container_width=True, hide
 @st.cache_data
 def convert_df_to_csv(df):
     return df.to_csv(index=False).encode('utf-8')
-
-csv_data = convert_df_to_csv(filtered_df)
-
 st.download_button(
     label="⬇️ Download Report as CSV",
     data=csv_data,
     file_name="SSC_CGL_2025_Cutoff_Report.csv",
     mime="text/csv"
 )
+
 
 
 
