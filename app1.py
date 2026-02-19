@@ -123,29 +123,44 @@ if df_main is not None:
     u_b_min, u_c_min = cutoffs_rules.get(u_cat, (12, 21))
     
     posts = get_full_vacancy_list()
-    allocated_indices = set()
+    # Convert posts to a DataFrame for easier processing
+posts_df = pd.DataFrame(posts, columns=[
+    'Level', 'Post', 'UR', 'SC', 'ST', 'OBC', 'EWS', 'Total', 'IsCPT', 'IsStat'
+])
+
+# Aggregate by unique post name and level
+posts_df = posts_df.groupby(['Level', 'Post'], as_index=False).agg({
+    'UR': 'sum', 'SC': 'sum', 'ST': 'sum', 'OBC': 'sum', 'EWS': 'sum',
+    'Total': 'sum', 'IsCPT': 'max', 'IsStat': 'max'
+})
+allocated_indices = set()
 display_data = []
 
-for lvl, name, ur_v, sc_v, st_v, obc_v, ews_v, tot_v, is_cpt, is_stat in posts:
+for _, row in posts_df.iterrows():
+    lvl = row['Level']
+    name = row['Post']
+    ur_v, sc_v, st_v, obc_v, ews_v = row['UR'], row['SC'], row['ST'], row['OBC'], row['EWS']
+    is_cpt, is_stat = row['IsCPT'], row['IsStat']
+
+    # Pool of candidates not yet allocated
     pool = df_final.copy() if is_stat else df_final[~df_final.index.isin(allocated_indices)]
     eligible = pool[pool['Pass_C']] if is_cpt else pool[pool['Pass_B']]
     score_col = 'Total_Stat_Marks' if is_stat else 'Main Paper Marks'
     user_score = (u_marks + u_stat) if is_stat else u_marks
-    
+
     # --- UR allocation ---
     ur_candidates = eligible.sort_values(by=score_col, ascending=False).head(ur_v)
     ur_cut = ur_candidates[score_col].min() if not ur_candidates.empty else 0
     allocated_indices.update(ur_candidates.index)
-    
-    # --- Category allocation ---
+
+    # --- Category allocation for user's category ---
     cat_v_map = {'SC': sc_v, 'ST': st_v, 'OBC': obc_v, 'EWS': ews_v}
     target_vac = cat_v_map.get(u_cat, 0)
-    
     remaining_pool = eligible[~eligible.index.isin(ur_candidates.index)]
     cat_candidates = remaining_pool[remaining_pool['Category'] == u_cat].sort_values(by=score_col, ascending=False).head(target_vac)
     cat_cut = cat_candidates[score_col].min() if not cat_candidates.empty else 0
     allocated_indices.update(cat_candidates.index)
-    
+
     # --- User Prediction ---
     req_comp = u_c_min if is_cpt else u_b_min
     if u_comp < req_comp:
@@ -158,7 +173,7 @@ for lvl, name, ur_v, sc_v, st_v, obc_v, ews_v, tot_v, is_cpt, is_stat in posts:
         chance = "✅ HIGH CHANCE"
     else:
         chance = "📉 LOW CHANCE"
-    
+
     display_data.append({
         "Level": lvl,
         "Post": name,
@@ -167,12 +182,11 @@ for lvl, name, ur_v, sc_v, st_v, obc_v, ews_v, tot_v, is_cpt, is_stat in posts:
         f"{u_cat} Cutoff": cat_cut if cat_cut > 0 else "N/A",
         "Prediction": chance
     })
-
     st.subheader("📋 Post-wise Allocation Report")
-    final_df = pd.DataFrame(display_data)
-    st.dataframe(final_df, use_container_width=True, hide_index=True)
-else:
-    st.error(f"File '{MAIN_FILE}' not found!")
+final_df = pd.DataFrame(display_data)
+final_df = final_df.sort_values(['Level', 'Post'])  # optional sorting
+st.dataframe(final_df, use_container_width=True, hide_index=True)
+
 
 
 
