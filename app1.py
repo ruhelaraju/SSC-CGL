@@ -185,6 +185,7 @@ if df_main is not None:
         display_data.append({
             "Level": lvl,
             "Post": name,
+            "PayLevelNum": pay_level_order[lvl],
             "Type": "Stat" if is_stat else "Main",
             "UR Cutoff": ur_cut if ur_cut > 0 else "N/A",
             f"{u_cat} Cutoff": user_cat_cut if user_cat_cut > 0 else "N/A",
@@ -192,14 +193,10 @@ if df_main is not None:
         })
 
     # --- Display final table ---
-    st.subheader("📋 Post-wise Allocation Report")
     final_df_display = pd.DataFrame(display_data)
     final_df_display = final_df_display.sort_values(['PayLevelNum', 'Post'], ascending=[False, True])
+    st.subheader("📋 Post-wise Allocation Report")
     st.dataframe(final_df_display.drop(columns='PayLevelNum'), use_container_width=True, hide_index=True)
 
 else:
     st.error(f"File '{MAIN_FILE}' not found!")
-
-
-
-
