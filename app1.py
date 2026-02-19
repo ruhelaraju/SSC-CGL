@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 import os
 
-st.set_page_config(page_title="SSC CGL 2025 Fast Predictor", layout="wide")
+st.set_page_config(page_title="SSC CGL 2025 Optimized Predictor", layout="wide")
 
 # --- PART 1: DATA LOADING & CLEANING ---
 @st.cache_data
@@ -121,85 +121,85 @@ if df_main is not None:
     cutoffs_rules = {'UR': (18, 27), 'OBC': (15, 24), 'EWS': (15, 24), 'SC': (12, 21), 'ST': (12, 21)}
     u_b_min, u_c_min = cutoffs_rules.get(u_cat, (12, 21))
 
-    # --- PART 4: PROCESS UNIQUE POSTS & ALLOCATE ---
+    # --- PART 4: PROCESS POSTS IN DESCENDING PAY LEVEL ---
     posts = get_full_vacancy_list()
     posts_df = pd.DataFrame(posts, columns=[
         'Level', 'Post', 'UR', 'SC', 'ST', 'OBC', 'EWS', 'Total', 'IsCPT', 'IsStat'
     ])
-    # Aggregate duplicates (if any)
-    posts_df = posts_df.groupby(['Level', 'Post'], as_index=False).agg({
-        'UR': 'sum', 'SC': 'sum', 'ST': 'sum', 'OBC': 'sum', 'EWS': 'sum',
-        'Total': 'sum', 'IsCPT': 'max', 'IsStat': 'max'
-    })
 
-    # Sort posts by Pay Level descending
-pay_level_order = {"L-7": 7, "L-6": 6, "L-5": 5, "L-4": 4}
-posts_df['PayLevelNum'] = posts_df['Level'].map(pay_level_order)
-posts_df = posts_df.sort_values(by='PayLevelNum', ascending=False)
+    # Map pay levels to numbers for sorting
+    pay_level_order = {"L-7": 7, "L-6": 6, "L-5": 5, "L-4": 4}
+    posts_df['PayLevelNum'] = posts_df['Level'].map(pay_level_order)
+    posts_df = posts_df.sort_values(by='PayLevelNum', ascending=False)
 
-# Sort candidates globally by score descending
-df_final['TotalScore'] = df_final['Total_Stat_Marks']  # or 'Main Paper Marks' if no stat
-global_pool = df_final.sort_values(by='TotalScore', ascending=False).copy()
-allocated_indices = set()
+    # Global candidate pool sorted by score
+    df_final['TotalScore'] = df_final['Total_Stat_Marks']
+    global_pool = df_final.sort_values(by='TotalScore', ascending=False).copy()
+    allocated_indices = set()
+    display_data = []
 
-display_data = []
+    for _, row in posts_df.iterrows():
+        lvl = row['Level']
+        name = row['Post']
+        ur_v, sc_v, st_v, obc_v, ews_v = row['UR'], row['SC'], row['ST'], row['OBC'], row['EWS']
+        is_cpt, is_stat = row['IsCPT'], row['IsStat']
 
-for _, row in posts_df.iterrows():
-    lvl = row['Level']
-    name = row['Post']
-    ur_v, sc_v, st_v, obc_v, ews_v = row['UR'], row['SC'], row['ST'], row['OBC'], row['EWS']
-    is_cpt, is_stat = row['IsCPT'], row['IsStat']
-    
-    # Take candidates from global pool not yet allocated
-    pool = global_pool[~global_pool.index.isin(allocated_indices)]
-    score_col = 'Total_Stat_Marks' if is_stat else 'Main Paper Marks'
+        # Initialize user category cutoff
+        user_cat_cut = 0
 
-    # UR Allocation
-    ur_candidates = pool.head(ur_v)
-    ur_cut = ur_candidates[score_col].min() if not ur_candidates.empty else 0
-    allocated_indices.update(ur_candidates.index)
+        # Candidates not yet allocated
+        pool = global_pool[~global_pool.index.isin(allocated_indices)]
+        score_col = 'Total_Stat_Marks' if is_stat else 'Main Paper Marks'
+        user_score = (u_marks + u_stat) if is_stat else u_marks
 
-    # Category Allocation
-    cat_v_map = {'SC': sc_v, 'ST': st_v, 'OBC': obc_v, 'EWS': ews_v}
-    for cat, vac in cat_v_map.items():
-        if vac == 0:
-            continue
-        cat_pool = pool[~pool.index.isin(ur_candidates.index)]
-        cat_pool = cat_pool[cat_pool['Category'] == cat].sort_values(by=score_col, ascending=False).head(vac)
-        cat_cut = cat_pool[score_col].min() if not cat_pool.empty else 0
-        allocated_indices.update(cat_pool.index)
+        # --- UR Allocation ---
+        ur_candidates = pool.head(ur_v)
+        ur_cut = ur_candidates[score_col].min() if not ur_candidates.empty else 0
+        allocated_indices.update(ur_candidates.index)
 
-        # Store cutoff for user category
-        if cat == u_cat:
-            user_cat_cut = cat_cut
+        # --- Category Allocation ---
+        cat_v_map = {'SC': sc_v, 'ST': st_v, 'OBC': obc_v, 'EWS': ews_v}
+        for cat, vac in cat_v_map.items():
+            if vac == 0:
+                continue
+            cat_pool = pool[~pool.index.isin(ur_candidates.index)]
+            cat_pool = cat_pool[cat_pool['Category'] == cat].sort_values(by=score_col, ascending=False).head(vac)
+            cat_cut = cat_pool[score_col].min() if not cat_pool.empty else 0
+            allocated_indices.update(cat_pool.index)
+            if cat == u_cat:
+                user_cat_cut = cat_cut
 
-    # Determine user chance for this post
-    user_score = (u_marks + u_stat) if is_stat else u_marks
-    req_comp = u_c_min if is_cpt else u_b_min
-    if u_comp < req_comp:
-        chance = "❌ FAIL (Comp)"
-    elif is_stat and u_stat == 0:
-        chance = "⚠️ Stat Paper Absent"
-    elif user_score >= ur_cut and ur_cut > 0:
-        chance = "⭐ HIGH (UR Merit)"
-    elif user_score >= user_cat_cut and user_cat_cut > 0:
-        chance = "✅ HIGH CHANCE"
-    else:
-        chance = "📉 LOW CHANCE"
+        # --- User Prediction ---
+        req_comp = u_c_min if is_cpt else u_b_min
+        if u_comp < req_comp:
+            chance = "❌ FAIL (Comp)"
+        elif is_stat and u_stat == 0:
+            chance = "⚠️ Stat Paper Absent"
+        elif user_score >= ur_cut and ur_cut > 0:
+            chance = "⭐ HIGH (UR Merit)"
+        elif user_score >= user_cat_cut and user_cat_cut > 0:
+            chance = "✅ HIGH CHANCE"
+        else:
+            chance = "📉 LOW CHANCE"
 
-    display_data.append({
-        "Level": lvl,
-        "Post": name,
-        "Type": "Stat" if is_stat else "Main",
-        "UR Cutoff": ur_cut,
-        f"{u_cat} Cutoff": user_cat_cut,
-        "Prediction": chance
-    })
+        display_data.append({
+            "Level": lvl,
+            "Post": name,
+            "Type": "Stat" if is_stat else "Main",
+            "UR Cutoff": ur_cut if ur_cut > 0 else "N/A",
+            f"{u_cat} Cutoff": user_cat_cut if user_cat_cut > 0 else "N/A",
+            "Prediction": chance
+        })
+
+    # --- Display final table ---
     st.subheader("📋 Post-wise Allocation Report")
     final_df_display = pd.DataFrame(display_data)
-    final_df_display = final_df_display.sort_values(['Level', 'Post'])
-    st.dataframe(final_df_display, use_container_width=True, hide_index=True)
+    final_df_display = final_df_display.sort_values(['PayLevelNum', 'Post'], ascending=[False, True])
+    st.dataframe(final_df_display.drop(columns='PayLevelNum'), use_container_width=True, hide_index=True)
+
 else:
     st.error(f"File '{MAIN_FILE}' not found!")
+
+
 
 
