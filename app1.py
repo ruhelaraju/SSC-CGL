@@ -118,83 +118,75 @@ if df_main is not None:
         df_final = df_main.copy()
         df_final['Total_Stat_Marks'] = df_final['Main Paper Marks']
 
-    cutoffs_rules = {'UR': (18, 27), 'OBC': (15, 24), 'EWS': (15, 24), 'SC': (12, 21), 'ST': (12, 21)}
-    u_b_min, u_c_min = cutoffs_rules.get(u_cat, (12, 21))
+    # --- PART 4: FULL CATEGORY CUTOFF TABLE + USER PREDICTION ---
+display_full = []
 
-    posts = get_full_vacancy_list()
-    posts_df = pd.DataFrame(posts, columns=[
-        'Level', 'Post', 'UR', 'SC', 'ST', 'OBC', 'EWS', 'Total', 'IsCPT', 'IsStat'
-    ])
+# Reset allocation for full cutoff computation
+allocated_indices_full = set()
 
-    # Map pay levels to numbers for sorting
-    pay_level_order = {"L-7": 7, "L-6": 6, "L-5": 5, "L-4": 4}
-    posts_df['PayLevelNum'] = posts_df['Level'].map(pay_level_order)
-    posts_df = posts_df.sort_values(by='PayLevelNum', ascending=False)
+for _, row in posts_df.iterrows():
+    lvl = row['Level']
+    name = row['Post']
+    ur_v, sc_v, st_v, obc_v, ews_v = row['UR'], row['SC'], row['ST'], row['OBC'], row['EWS']
+    is_cpt, is_stat = row['IsCPT'], row['IsStat']
 
-    # Global candidate pool sorted by score
-    df_final['TotalScore'] = df_final['Total_Stat_Marks']
-    global_pool = df_final.sort_values(by='TotalScore', ascending=False).copy()
-    allocated_indices = set()
-    display_data = []
+    pool = global_pool[~global_pool.index.isin(allocated_indices_full)]
+    score_col = 'Total_Stat_Marks' if is_stat else 'Main Paper Marks'
+    user_score = (u_marks + u_stat) if is_stat else u_marks
 
-    for _, row in posts_df.iterrows():
-        lvl = row['Level']
-        name = row['Post']
-        ur_v, sc_v, st_v, obc_v, ews_v = row['UR'], row['SC'], row['ST'], row['OBC'], row['EWS']
-        is_cpt, is_stat = row['IsCPT'], row['IsStat']
+    # UR cutoff
+    ur_candidates = pool.head(ur_v)
+    ur_cut = ur_candidates[score_col].min() if not ur_candidates.empty else 0
+    allocated_indices_full.update(ur_candidates.index)
 
-        # Candidates not yet allocated
-        pool = global_pool[~global_pool.index.isin(allocated_indices)]
-        score_col = 'Total_Stat_Marks' if is_stat else 'Main Paper Marks'
-        user_score = (u_marks + u_stat) if is_stat else u_marks
+    # Category cutoffs
+    cat_v_map = {'SC': st_v, 'ST': st_v, 'OBC': obc_v, 'EWS': ews_v}
+    cat_cutoffs = {}
+    user_cat_cut = 0
+    for cat, vac in cat_v_map.items():
+        if vac == 0:
+            cat_cutoffs[cat] = "N/A"
+            continue
+        cat_pool = pool[~pool.index.isin(ur_candidates.index)]
+        cat_pool = cat_pool[cat_pool['Category'] == cat].sort_values(by=score_col, ascending=False).head(vac)
+        cat_cut = cat_pool[score_col].min() if not cat_pool.empty else 0
+        cat_cutoffs[cat] = cat_cut if cat_cut > 0 else "N/A"
+        allocated_indices_full.update(cat_pool.index)
+        if cat == u_cat:
+            user_cat_cut = cat_cut
 
-        # --- UR Allocation ---
-        ur_candidates = pool.head(ur_v)
-        ur_cut = ur_candidates[score_col].min() if not ur_candidates.empty else 0
-        allocated_indices.update(ur_candidates.index)
+    # User Prediction
+    req_comp = u_c_min if is_cpt else u_b_min
+    if u_comp < req_comp:
+        chance = "❌ FAIL (Comp)"
+    elif is_stat and u_stat == 0:
+        chance = "⚠️ Stat Paper Absent"
+    elif user_score >= ur_cut and ur_cut > 0:
+        chance = "⭐ HIGH (UR Merit)"
+    elif user_score >= user_cat_cut and user_cat_cut > 0:
+        chance = "✅ HIGH CHANCE"
+    else:
+        chance = "📉 LOW CHANCE"
 
-        # --- Category Allocation ---
-        cat_v_map = {'SC': sc_v, 'ST': st_v, 'OBC': obc_v, 'EWS': ews_v}
-        user_cat_cut = 0
-        for cat, vac in cat_v_map.items():
-            if vac == 0:
-                continue
-            cat_pool = pool[~pool.index.isin(ur_candidates.index)]
-            cat_pool = cat_pool[cat_pool['Category'] == cat].sort_values(by=score_col, ascending=False).head(vac)
-            cat_cut = cat_pool[score_col].min() if not cat_pool.empty else 0
-            allocated_indices.update(cat_pool.index)
-            if cat == u_cat:
-                user_cat_cut = cat_cut
+    display_full.append({
+        "Pay Level": lvl,
+        "Post": name,
+        "UR Cutoff": ur_cut if ur_cut > 0 else "N/A",
+        "SC Cutoff": cat_cutoffs.get('SC', "N/A"),
+        "ST Cutoff": cat_cutoffs.get('ST', "N/A"),
+        "OBC Cutoff": cat_cutoffs.get('OBC', "N/A"),
+        "EWS Cutoff": cat_cutoffs.get('EWS', "N/A"),
+        f"{u_cat} Prediction": chance
+    })
 
-        # --- User Prediction ---
-        req_comp = u_c_min if is_cpt else u_b_min
-        if u_comp < req_comp:
-            chance = "❌ FAIL (Comp)"
-        elif is_stat and u_stat == 0:
-            chance = "⚠️ Stat Paper Absent"
-        elif user_score >= ur_cut and ur_cut > 0:
-            chance = "⭐ HIGH (UR Merit)"
-        elif user_score >= user_cat_cut and user_cat_cut > 0:
-            chance = "✅ HIGH CHANCE"
-        else:
-            chance = "📉 LOW CHANCE"
+# Convert to DataFrame and sort by pay level descending
+full_df = pd.DataFrame(display_full)
+full_df['PayLevelNum'] = full_df['Pay Level'].map(pay_level_order)
+full_df = full_df.sort_values(['PayLevelNum', 'Post'], ascending=[False, True])
 
-        # --- Display ---
-        display_data.append({
-            "Level": lvl,
-            "Post": name,
-            "PayLevelNum": pay_level_order[lvl],
-            "Type": "Stat" if is_stat else "Main",
-            "UR Cutoff": ur_cut if ur_cut > 0 else "N/A",
-            f"{u_cat} Cutoff": user_cat_cut if user_cat_cut > 0 else "N/A",
-            "Prediction": chance
-        })
-
-    # --- Display final table ---
-    final_df_display = pd.DataFrame(display_data)
-    final_df_display = final_df_display.sort_values(['PayLevelNum', 'Post'], ascending=[False, True])
-    st.subheader("📋 Post-wise Allocation Report")
-    st.dataframe(final_df_display.drop(columns='PayLevelNum'), use_container_width=True, hide_index=True)
+st.subheader("📊 Full Post-wise Cutoff Table + Your Prediction")
+st.dataframe(full_df.drop(columns='PayLevelNum'), use_container_width=True, hide_index=True)
 
 else:
     st.error(f"File '{MAIN_FILE}' not found!")
+
