@@ -207,43 +207,46 @@ st.dataframe(full_df.drop(columns='PayLevelNum'), use_container_width=True, hide
 # pip install fpdf2
 
 from fpdf import FPDF
+import streamlit as st
 
-# --- FUNCTION TO CONVERT DATAFRAME TO PDF (UTF-8) ---
-def df_to_pdf_utf8(df, title="SSC CGL 2025 Cutoff Report"):
+# --- PDF FUNCTION WITH UTF-8 TTF FONT ---
+def df_to_pdf_unicode(df, title="SSC CGL 2025 Cutoff Report"):
     pdf = FPDF()
     pdf.add_page()
     pdf.set_auto_page_break(auto=True, margin=15)
-    
+
+    # Add a TTF font that supports UTF-8
+    # Make sure 'DejaVuSans.ttf' is in your project folder or provide full path
+    pdf.add_font('DejaVu', '', 'DejaVuSans.ttf', uni=True)
+    pdf.set_font("DejaVu", 'B', 14)
+
     # Title
-    pdf.set_font("Arial", 'B', 14)
     pdf.cell(0, 10, title, ln=True, align="C")
     pdf.ln(5)
-    
-    # Table font
-    pdf.set_font("Arial", '', 10)
-    
+
+    pdf.set_font("DejaVu", '', 10)
     cols = df.columns.tolist()
     n_cols = len(cols)
-    page_width = pdf.w - 2*pdf.l_margin
+    page_width = pdf.w - 2 * pdf.l_margin
     col_width = page_width / n_cols
-    
+
     # Header
     for col in cols:
         pdf.cell(col_width, 8, str(col), border=1, align='C')
     pdf.ln()
-    
-    # Rows with UTF-8 support
+
+    # Rows
     for _, row in df.iterrows():
         for col in cols:
             text = str(row[col])
             pdf.cell(col_width, 6, text, border=1)
         pdf.ln()
-    
-    # Return PDF as bytes
+
+    # Return PDF bytes
     return pdf.output(dest='S').encode('latin1', errors='replace')
 
-# --- USE IN STREAMLIT ---
-pdf_bytes = df_to_pdf_utf8(full_df.drop(columns='PayLevelNum'))
+# --- STREAMLIT DOWNLOAD BUTTON ---
+pdf_bytes = df_to_pdf_unicode(full_df.drop(columns='PayLevelNum'))
 
 st.download_button(
     label="⬇️ Download Full Report as PDF",
@@ -251,6 +254,8 @@ st.download_button(
     file_name="SSC_CGL_2025_Cutoff_Report.pdf",
     mime="application/pdf"
 )
+
+
 
 
 
