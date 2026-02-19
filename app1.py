@@ -201,16 +201,52 @@ full_df = full_df.sort_values(['PayLevelNum', 'Post'], ascending=[False, True])
 
 st.subheader("📊 Full Post-wise Cutoff Table + Your Prediction")
 st.dataframe(full_df.drop(columns='PayLevelNum'), use_container_width=True, hide_index=True)
-# --- DOWNLOAD BUTTON ---
-@st.cache_data
-def convert_df_to_csv(df):
-    return df.to_csv(index=False).encode('utf-8')
+from fpdf import FPDF
+import io
+
+# --- FUNCTION TO CONVERT DATAFRAME TO PDF ---
+def df_to_pdf(df, title="SSC CGL 2025 Cutoff Report"):
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", 'B', 14)
+    pdf.cell(0, 10, title, ln=True, align="C")
+    pdf.ln(5)
+    
+    # Set font for table
+    pdf.set_font("Arial", '', 10)
+    
+    # Column widths
+    col_widths = [30] + [35]*6  # adjust widths as needed
+    cols = df.columns.tolist()
+    
+    # Header
+    for i, col in enumerate(cols):
+        pdf.cell(col_widths[i], 8, str(col), border=1, align='C')
+    pdf.ln()
+    
+    # Rows
+    for _, row in df.iterrows():
+        for i, col in enumerate(cols):
+            pdf.cell(col_widths[i], 6, str(row[col]), border=1)
+        pdf.ln()
+    
+    # Output to BytesIO
+    pdf_buffer = io.BytesIO()
+    pdf.output(pdf_buffer)
+    pdf_buffer.seek(0)
+    return pdf_buffer
+
+# --- PDF DOWNLOAD BUTTON ---
+pdf_buffer = df_to_pdf(full_df.drop(columns='PayLevelNum'))
+
 st.download_button(
-    label="⬇️ Download Report as CSV",
-    data=csv_data,
-    file_name="SSC_CGL_2025_Cutoff_Report.csv",
-    mime="text/csv"
+    label="⬇️ Download Full Report as PDF",
+    data=pdf_buffer,
+    file_name="SSC_CGL_2025_Cutoff_Report.pdf",
+    mime="application/pdf"
 )
+
+
 
 
 
