@@ -206,63 +206,65 @@ st.dataframe(full_df.drop(columns='PayLevelNum'), use_container_width=True, hide
 # Install fpdf2 if not installed
 # pip install fpdf2
 
-from fpdf import FPDF
-import os
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+from reportlab.lib import colors
+from reportlab.lib.styles import ParagraphStyle
+from reportlab.lib import pagesizes
+from reportlab.platypus import TableStyle
+from reportlab.lib.units import inch
+from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.cidfonts import UnicodeCIDFont
+import io
 import streamlit as st
 
-def df_to_pdf_unicode(df, title="SSC CGL 2025 Cutoff Report"):
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.set_auto_page_break(auto=True, margin=10)
+def generate_pdf(df):
+    buffer = io.BytesIO()
 
-    # Check if font file exists
-    font_path = "DejaVuSans.ttf"
-    if not os.path.exists(font_path):
-        st.error("DejaVuSans.ttf font file not found in project folder.")
-        return None
-
-    # Register Unicode font (regular only)
-    pdf.add_font('DejaVu', '', font_path, uni=True)
-    pdf.set_font("DejaVu", '', 14)
-
-    # Title
-    pdf.cell(0, 10, title, ln=True, align="C")
-    pdf.ln(5)
-
-    # Table font
-    pdf.set_font("DejaVu", '', 8)
-
-    cols = df.columns.tolist()
-    n_cols = len(cols)
-
-    page_width = pdf.w - 2 * pdf.l_margin
-    col_width = page_width / n_cols
-
-    # Header Row
-    for col in cols:
-        pdf.cell(col_width, 8, str(col), border=1, align='C')
-    pdf.ln()
-
-    # Data Rows
-    for _, row in df.iterrows():
-        for col in cols:
-            text = str(row[col])
-            pdf.cell(col_width, 6, text, border=1)
-        pdf.ln()
-
-        # Output PDF as bytes
-    return pdf.output(dest='S')
-
-# --- STREAMLIT DOWNLOAD BUTTON ---
-pdf_bytes = df_to_pdf_unicode(full_df.drop(columns='PayLevelNum'))
-
-if pdf_bytes:
-    st.download_button(
-        label="⬇️ Download Full Report as PDF",
-        data=pdf_bytes,
-        file_name="SSC_CGL_2025_Cutoff_Report.pdf",
-        mime="application/pdf"
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=pagesizes.A4
     )
+
+    elements = []
+
+    # Register built-in Unicode font (safe)
+    pdfmetrics.registerFont(UnicodeCIDFont('HYSMyeongJo-Medium'))
+
+    style = ParagraphStyle(
+        name='Normal',
+        fontName='HYSMyeongJo-Medium',
+        fontSize=8
+    )
+
+    # Prepare table data
+    data = [df.columns.tolist()] + df.astype(str).values.tolist()
+
+    table = Table(data, repeatRows=1)
+
+    table.setStyle(TableStyle([
+        ('FONTNAME', (0,0), (-1,-1), 'HYSMyeongJo-Medium'),
+        ('FONTSIZE', (0,0), (-1,-1), 7),
+        ('BACKGROUND', (0,0), (-1,0), colors.lightgrey),
+        ('GRID', (0,0), (-1,-1), 0.5, colors.grey),
+        ('ALIGN', (0,0), (-1,-1), 'CENTER')
+    ]))
+
+    elements.append(table)
+    doc.build(elements)
+
+    buffer.seek(0)
+    return buffer
+pdf_file = generate_pdf(full_df.drop(columns='PayLevelNum'))
+
+st.download_button(
+    label="⬇️ Download Full Report as PDF",
+    data=pdf_file,
+    file_name="SSC_CGL_2025_Cutoff_Report.pdf",
+    mime="application/pdf"
+)
+
+
 
 
 
