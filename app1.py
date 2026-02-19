@@ -138,6 +138,19 @@ posts_df = posts_df.sort_values(by='PayLevelNum', ascending=False)
 # --- GLOBAL POOL SORTED ---
 df_final['TotalScore'] = df_final['Total_Stat_Marks']
 global_pool = df_final.sort_values(by='TotalScore', ascending=False).copy()
+# --- DOWNLOAD BUTTON ---
+@st.cache_data
+def convert_df_to_csv(df):
+    return df.to_csv(index=False).encode('utf-8')
+
+csv_data = convert_df_to_csv(filtered_df)
+
+st.download_button(
+    label="⬇️ Download Report as CSV",
+    data=csv_data,
+    file_name="SSC_CGL_2025_Cutoff_Report.csv",
+    mime="text/csv"
+)
 
 # --- FULL CATEGORY CUTOFF TABLE + USER PREDICTION ---
 display_full = []
@@ -201,31 +214,9 @@ full_df = full_df.sort_values(['PayLevelNum', 'Post'], ascending=[False, True])
 
 st.subheader("📊 Full Post-wise Cutoff Table + Your Prediction")
 st.dataframe(full_df.drop(columns='PayLevelNum'), use_container_width=True, hide_index=True)
-# --- SEARCH BAR ---
-st.subheader("🔍 Search / Filter Posts")
-search_text = st.text_input("Enter Post Name or Pay Level (e.g., 'ASO', 'L-7')").strip().lower()
 
-if search_text:
-    filtered_df = full_df[full_df['Post'].str.lower().str.contains(search_text) |
-                           full_df['Pay Level'].str.lower().str.contains(search_text)]
-else:
-    filtered_df = full_df.copy()
 
-st.dataframe(filtered_df.drop(columns='PayLevelNum'), use_container_width=True, hide_index=True)
 
-# --- DOWNLOAD BUTTON ---
-@st.cache_data
-def convert_df_to_csv(df):
-    return df.to_csv(index=False).encode('utf-8')
-
-csv_data = convert_df_to_csv(filtered_df)
-
-st.download_button(
-    label="⬇️ Download Report as CSV",
-    data=csv_data,
-    file_name="SSC_CGL_2025_Cutoff_Report.csv",
-    mime="text/csv"
-)
 
 
 
