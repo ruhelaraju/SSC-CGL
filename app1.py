@@ -187,7 +187,6 @@ full_df = full_df.sort_values(['PayLevelNum', 'Post'], ascending=[False, True])
 st.subheader("📊 Full Post-wise Cutoff Table + Your Prediction")
 st.dataframe(full_df.drop(columns='PayLevelNum'), use_container_width=True, hide_index=True)
 
-    else:
-    st.error(f"File '{MAIN_FILE}' not found!")
+
 
 
