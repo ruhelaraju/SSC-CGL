@@ -139,58 +139,6 @@ posts_df = posts_df.sort_values(by='PayLevelNum', ascending=False)
 df_final['TotalScore'] = df_final['Total_Stat_Marks']
 global_pool = df_final.sort_values(by='TotalScore', ascending=False).copy()
 
-# --- POST-WISE USER PREDICTION (existing) ---
-allocated_indices = set()
-display_data = []
-
-for _, row in posts_df.iterrows():
-    lvl = row['Level']
-    name = row['Post']
-    ur_v, sc_v, st_v, obc_v, ews_v = row['UR'], row['SC'], row['ST'], row['OBC'], row['EWS']
-    is_cpt, is_stat = row['IsCPT'], row['IsStat']
-
-    pool = global_pool[~global_pool.index.isin(allocated_indices)]
-    score_col = 'Total_Stat_Marks' if is_stat else 'Main Paper Marks'
-    user_score = (u_marks + u_stat) if is_stat else u_marks
-
-    ur_candidates = pool.head(ur_v)
-    ur_cut = ur_candidates[score_col].min() if not ur_candidates.empty else 0
-    allocated_indices.update(ur_candidates.index)
-
-    cat_v_map = {'SC': st_v, 'ST': st_v, 'OBC': obc_v, 'EWS': ews_v}
-    user_cat_cut = 0
-    for cat, vac in cat_v_map.items():
-        if vac == 0:
-            continue
-        cat_pool = pool[~pool.index.isin(ur_candidates.index)]
-        cat_pool = cat_pool[cat_pool['Category'] == cat].sort_values(by=score_col, ascending=False).head(vac)
-        cat_cut = cat_pool[score_col].min() if not cat_pool.empty else 0
-        allocated_indices.update(cat_pool.index)
-        if cat == u_cat:
-            user_cat_cut = cat_cut
-
-    req_comp = u_c_min if is_cpt else u_b_min
-    if u_comp < req_comp:
-        chance = "❌ FAIL (Comp)"
-    elif is_stat and u_stat == 0:
-        chance = "⚠️ Stat Paper Absent"
-    elif user_score >= ur_cut and ur_cut > 0:
-        chance = "⭐ HIGH (UR Merit)"
-    elif user_score >= user_cat_cut and user_cat_cut > 0:
-        chance = "✅ HIGH CHANCE"
-    else:
-        chance = "📉 LOW CHANCE"
-
-    display_data.append({
-        "Level": lvl, "Post": name, "Type": "Stat" if is_stat else "Main",
-        "UR Cutoff": ur_cut if ur_cut > 0 else "N/A",
-        f"{u_cat} Cutoff": user_cat_cut if user_cat_cut > 0 else "N/A",
-        "Prediction": chance
-    })
-
-st.subheader("📋 Post-wise Allocation Report")
-st.dataframe(pd.DataFrame(display_data), use_container_width=True, hide_index=True)
-
 # --- FULL CATEGORY CUTOFF TABLE + USER PREDICTION ---
 display_full = []
 allocated_indices_full = set()
@@ -253,3 +201,4 @@ full_df = full_df.sort_values(['PayLevelNum', 'Post'], ascending=[False, True])
 
 st.subheader("📊 Full Post-wise Cutoff Table + Your Prediction")
 st.dataframe(full_df.drop(columns='PayLevelNum'), use_container_width=True, hide_index=True)
+
