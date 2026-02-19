@@ -194,7 +194,14 @@ for _, row in posts_df.iterrows():
         "EWS Cutoff": cat_cutoffs.get('EWS', "N/A"),
         f"{u_cat} Prediction": chance
     })
-    # --- DOWNLOAD BUTTON ---
+    
+full_df = pd.DataFrame(display_full)
+full_df['PayLevelNum'] = full_df['Pay Level'].map(pay_level_order)
+full_df = full_df.sort_values(['PayLevelNum', 'Post'], ascending=[False, True])
+
+st.subheader("📊 Full Post-wise Cutoff Table + Your Prediction")
+st.dataframe(full_df.drop(columns='PayLevelNum'), use_container_width=True, hide_index=True)
+# --- DOWNLOAD BUTTON ---
 @st.cache_data
 def convert_df_to_csv(df):
     return df.to_csv(index=False).encode('utf-8')
@@ -208,12 +215,6 @@ st.download_button(
     mime="text/csv"
 )
 
-full_df = pd.DataFrame(display_full)
-full_df['PayLevelNum'] = full_df['Pay Level'].map(pay_level_order)
-full_df = full_df.sort_values(['PayLevelNum', 'Post'], ascending=[False, True])
-
-st.subheader("📊 Full Post-wise Cutoff Table + Your Prediction")
-st.dataframe(full_df.drop(columns='PayLevelNum'), use_container_width=True, hide_index=True)
 
 
 
