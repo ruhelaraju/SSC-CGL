@@ -251,7 +251,7 @@ def df_to_pdf_unicode(df, title="SSC CGL 2025 Cutoff Report"):
         pdf.ln()
 
     # Output as bytes (UTF-8 safe)
-    return pdf.output(dest='S')
+    return bytes(pdf.output(dest='S'), "latin-1")
 
 # --- STREAMLIT DOWNLOAD BUTTON ---
 pdf_bytes = df_to_pdf_unicode(full_df.drop(columns='PayLevelNum'))
@@ -263,6 +263,7 @@ if pdf_bytes:
         file_name="SSC_CGL_2025_Cutoff_Report.pdf",
         mime="application/pdf"
     )
+
 
 
 
