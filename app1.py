@@ -207,53 +207,64 @@ st.dataframe(full_df.drop(columns='PayLevelNum'), use_container_width=True, hide
 # pip install fpdf2
 
 from fpdf import FPDF
+import os
 import streamlit as st
 
-# --- PDF FUNCTION WITH UTF-8 TTF FONT ---
 def df_to_pdf_unicode(df, title="SSC CGL 2025 Cutoff Report"):
     pdf = FPDF()
     pdf.add_page()
-    pdf.set_auto_page_break(auto=True, margin=15)
+    pdf.set_auto_page_break(auto=True, margin=10)
 
-    # Add a TTF font that supports UTF-8
-    # Make sure 'DejaVuSans.ttf' is in your project folder or provide full path
-    pdf.add_font('DejaVu', '', 'DejaVuSans.ttf', uni=True)
-    pdf.set_font("DejaVu", 'B', 14)
+    # Check if font file exists
+    font_path = "DejaVuSans.ttf"
+    if not os.path.exists(font_path):
+        st.error("DejaVuSans.ttf font file not found in project folder.")
+        return None
+
+    # Register Unicode font (regular only)
+    pdf.add_font('DejaVu', '', font_path, uni=True)
+    pdf.set_font("DejaVu", '', 14)
 
     # Title
     pdf.cell(0, 10, title, ln=True, align="C")
     pdf.ln(5)
 
-    pdf.set_font("DejaVu", '', 10)
+    # Table font
+    pdf.set_font("DejaVu", '', 8)
+
     cols = df.columns.tolist()
     n_cols = len(cols)
+
     page_width = pdf.w - 2 * pdf.l_margin
     col_width = page_width / n_cols
 
-    # Header
+    # Header Row
     for col in cols:
         pdf.cell(col_width, 8, str(col), border=1, align='C')
     pdf.ln()
 
-    # Rows
+    # Data Rows
     for _, row in df.iterrows():
         for col in cols:
             text = str(row[col])
             pdf.cell(col_width, 6, text, border=1)
         pdf.ln()
 
-    # Return PDF bytes
-    return pdf.output(dest='S').encode('latin1', errors='replace')
+    # Output as bytes (UTF-8 safe)
+    return pdf.output(dest='S')
 
 # --- STREAMLIT DOWNLOAD BUTTON ---
 pdf_bytes = df_to_pdf_unicode(full_df.drop(columns='PayLevelNum'))
 
-st.download_button(
-    label="⬇️ Download Full Report as PDF",
-    data=pdf_bytes,
-    file_name="SSC_CGL_2025_Cutoff_Report.pdf",
-    mime="application/pdf"
-)
+if pdf_bytes:
+    st.download_button(
+        label="⬇️ Download Full Report as PDF",
+        data=pdf_bytes,
+        file_name="SSC_CGL_2025_Cutoff_Report.pdf",
+        mime="application/pdf"
+    )
+
+
 
 
 
