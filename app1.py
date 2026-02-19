@@ -217,7 +217,7 @@ def df_to_pdf(df, title="SSC CGL 2025 Cutoff Report"):
     cols = df.columns.tolist()
     n_cols = len(cols)
     page_width = pdf.w - 2*pdf.l_margin
-    col_width = page_width / n_cols  # equal width per column
+    col_width = page_width / n_cols
 
     # Header
     for col in cols:
@@ -230,19 +230,18 @@ def df_to_pdf(df, title="SSC CGL 2025 Cutoff Report"):
             pdf.cell(col_width, 6, str(row[col]), border=1)
         pdf.ln()
 
-    pdf_buffer = io.BytesIO()
-    pdf.output(pdf_buffer)
-    pdf_buffer.seek(0)
-    return pdf_buffer
-# --- PDF DOWNLOAD BUTTON ---
-pdf_buffer = df_to_pdf(full_df.drop(columns='PayLevelNum'))
+    # Return PDF as bytes
+    return pdf.output(dest='S').encode('latin1')  # <--- important fix
+pdf_bytes = df_to_pdf(full_df.drop(columns='PayLevelNum'))
 
 st.download_button(
     label="⬇️ Download Full Report as PDF",
-    data=pdf_buffer,
+    data=pdf_bytes,
     file_name="SSC_CGL_2025_Cutoff_Report.pdf",
     mime="application/pdf"
 )
+
+
 
 
 
