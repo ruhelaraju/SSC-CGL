@@ -203,36 +203,47 @@ full_df = full_df.sort_values(['PayLevelNum', 'Post'], ascending=[False, True])
 st.subheader("📊 Full Post-wise Cutoff Table + Your Prediction")
 st.dataframe(full_df.drop(columns='PayLevelNum'), use_container_width=True, hide_index=True)
 
+# Install fpdf2 if not installed
+# pip install fpdf2
+
 from fpdf import FPDF
-# --- FUNCTION TO CONVERT DATAFRAME TO PDF ---
-def df_to_pdf(df, title="SSC CGL 2025 Cutoff Report"):
+
+# --- FUNCTION TO CONVERT DATAFRAME TO PDF (UTF-8) ---
+def df_to_pdf_utf8(df, title="SSC CGL 2025 Cutoff Report"):
     pdf = FPDF()
     pdf.add_page()
+    pdf.set_auto_page_break(auto=True, margin=15)
+    
+    # Title
     pdf.set_font("Arial", 'B', 14)
     pdf.cell(0, 10, title, ln=True, align="C")
     pdf.ln(5)
-
+    
+    # Table font
     pdf.set_font("Arial", '', 10)
-
+    
     cols = df.columns.tolist()
     n_cols = len(cols)
     page_width = pdf.w - 2*pdf.l_margin
     col_width = page_width / n_cols
-
+    
     # Header
     for col in cols:
         pdf.cell(col_width, 8, str(col), border=1, align='C')
     pdf.ln()
-
-    # Rows
+    
+    # Rows with UTF-8 support
     for _, row in df.iterrows():
         for col in cols:
-            pdf.cell(col_width, 6, str(row[col]), border=1)
+            text = str(row[col])
+            pdf.cell(col_width, 6, text, border=1)
         pdf.ln()
-
+    
     # Return PDF as bytes
-    return pdf.output(dest='S').encode('latin1')  # <--- important fix
-pdf_bytes = df_to_pdf(full_df.drop(columns='PayLevelNum'))
+    return pdf.output(dest='S').encode('latin1', errors='replace')
+
+# --- USE IN STREAMLIT ---
+pdf_bytes = df_to_pdf_utf8(full_df.drop(columns='PayLevelNum'))
 
 st.download_button(
     label="⬇️ Download Full Report as PDF",
@@ -240,6 +251,7 @@ st.download_button(
     file_name="SSC_CGL_2025_Cutoff_Report.pdf",
     mime="application/pdf"
 )
+
 
 
 
