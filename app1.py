@@ -138,19 +138,6 @@ posts_df = posts_df.sort_values(by='PayLevelNum', ascending=False)
 # --- GLOBAL POOL SORTED ---
 df_final['TotalScore'] = df_final['Total_Stat_Marks']
 global_pool = df_final.sort_values(by='TotalScore', ascending=False).copy()
-# --- DOWNLOAD BUTTON ---
-@st.cache_data
-def convert_df_to_csv(df):
-    return df.to_csv(index=False).encode('utf-8')
-
-csv_data = convert_df_to_csv(filtered_df)
-
-st.download_button(
-    label="⬇️ Download Report as CSV",
-    data=csv_data,
-    file_name="SSC_CGL_2025_Cutoff_Report.csv",
-    mime="text/csv"
-)
 
 # --- FULL CATEGORY CUTOFF TABLE + USER PREDICTION ---
 display_full = []
@@ -207,6 +194,19 @@ for _, row in posts_df.iterrows():
         "EWS Cutoff": cat_cutoffs.get('EWS', "N/A"),
         f"{u_cat} Prediction": chance
     })
+    # --- DOWNLOAD BUTTON ---
+@st.cache_data
+def convert_df_to_csv(df):
+    return df.to_csv(index=False).encode('utf-8')
+
+csv_data = convert_df_to_csv(filtered_df)
+
+st.download_button(
+    label="⬇️ Download Report as CSV",
+    data=csv_data,
+    file_name="SSC_CGL_2025_Cutoff_Report.csv",
+    mime="text/csv"
+)
 
 full_df = pd.DataFrame(display_full)
 full_df['PayLevelNum'] = full_df['Pay Level'].map(pay_level_order)
@@ -214,6 +214,7 @@ full_df = full_df.sort_values(['PayLevelNum', 'Post'], ascending=[False, True])
 
 st.subheader("📊 Full Post-wise Cutoff Table + Your Prediction")
 st.dataframe(full_df.drop(columns='PayLevelNum'), use_container_width=True, hide_index=True)
+
 
 
 
