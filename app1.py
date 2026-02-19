@@ -124,53 +124,55 @@ if df_main is not None:
     
     posts = get_full_vacancy_list()
     allocated_indices = set()
-    display_data = []
+display_data = []
 
-    for lvl, name, ur_v, sc_v, st_v, obc_v, ews_v, tot_v, is_cpt, is_stat in posts:
-        pool = df_final.copy() if is_stat else df_final[~df_final.index.isin(allocated_indices)]
-        eligible = pool[pool['Pass_C']] if is_cpt else pool[pool['Pass_B']]
-        
-        score_col = 'Total_Stat_Marks' if is_stat else 'Main Paper Marks'
-        user_score = (u_marks + u_stat) if is_stat else u_marks
-        eligible = eligible.sort_values(by=score_col, ascending=False)
-        
-        # 1. UR SELECTION (Anyone can qualify here)
-        ur_pool = eligible.head(ur_v)
-        ur_cut = ur_pool[score_col].min() if not ur_pool.empty else 0
-        
-        # 2. CATEGORY SELECTION (Only for specific category candidates who failed UR)
-        remaining_pool = eligible[~eligible.index.isin(ur_pool.index)]
-        
-        # We calculate the cutoff for THE USER'S CATEGORY to show them the real threshold
-        cat_v_map = {'SC': sc_v, 'ST': st_v, 'OBC': obc_v, 'EWS': ews_v}
-        target_vac = cat_v_map.get(u_cat, 0)
-        
-        cat_pool = remaining_pool[remaining_pool['Category'] == u_cat].head(target_vac)
-        cat_cut = cat_pool[score_col].min() if not cat_pool.empty else 0
-
-        # Mark as allocated (if not JSO/SI)
-        if not is_stat:
-            allocated_indices.update(ur_pool.index)
-
-        # Prediction Logic
-        req_comp = u_c_min if is_cpt else u_b_min
-        if u_comp < req_comp: chance = "❌ FAIL (Comp)"
-        elif is_stat and u_stat == 0: chance = "⚠️ Stat Paper Absent"
-        elif user_score >= ur_cut and ur_cut > 0: chance = "⭐ HIGH (UR Merit)"
-        elif user_score >= cat_cut and cat_cut > 0: chance = "✅ HIGH CHANCE"
-        else: chance = "📉 LOW CHANCE"
-
-        display_data.append({
-            "Level": lvl, "Post": name, "Type": "Stat" if is_stat else "Main",
-            "UR Cutoff": ur_cut if ur_cut > 0 else "N/A",
-            f"{u_cat} Cutoff": cat_cut if cat_cut > 0 else "N/A", 
-            "Prediction": chance
-        })
+for lvl, name, ur_v, sc_v, st_v, obc_v, ews_v, tot_v, is_cpt, is_stat in posts:
+    pool = df_final.copy() if is_stat else df_final[~df_final.index.isin(allocated_indices)]
+    eligible = pool[pool['Pass_C']] if is_cpt else pool[pool['Pass_B']]
+    score_col = 'Total_Stat_Marks' if is_stat else 'Main Paper Marks'
+    user_score = (u_marks + u_stat) if is_stat else u_marks
+    
+    # --- UR allocation ---
+    ur_candidates = eligible.sort_values(by=score_col, ascending=False).head(ur_v)
+    ur_cut = ur_candidates[score_col].min() if not ur_candidates.empty else 0
+    allocated_indices.update(ur_candidates.index)
+    
+    # --- Category allocation ---
+    cat_v_map = {'SC': sc_v, 'ST': st_v, 'OBC': obc_v, 'EWS': ews_v}
+    target_vac = cat_v_map.get(u_cat, 0)
+    
+    remaining_pool = eligible[~eligible.index.isin(ur_candidates.index)]
+    cat_candidates = remaining_pool[remaining_pool['Category'] == u_cat].sort_values(by=score_col, ascending=False).head(target_vac)
+    cat_cut = cat_candidates[score_col].min() if not cat_candidates.empty else 0
+    allocated_indices.update(cat_candidates.index)
+    
+    # --- User Prediction ---
+    req_comp = u_c_min if is_cpt else u_b_min
+    if u_comp < req_comp:
+        chance = "❌ FAIL (Comp)"
+    elif is_stat and u_stat == 0:
+        chance = "⚠️ Stat Paper Absent"
+    elif user_score >= ur_cut and ur_cut > 0:
+        chance = "⭐ HIGH (UR Merit)"
+    elif user_score >= cat_cut and cat_cut > 0:
+        chance = "✅ HIGH CHANCE"
+    else:
+        chance = "📉 LOW CHANCE"
+    
+    display_data.append({
+        "Level": lvl,
+        "Post": name,
+        "Type": "Stat" if is_stat else "Main",
+        "UR Cutoff": ur_cut if ur_cut > 0 else "N/A",
+        f"{u_cat} Cutoff": cat_cut if cat_cut > 0 else "N/A",
+        "Prediction": chance
+    })
 
     st.subheader("📋 Post-wise Allocation Report")
     final_df = pd.DataFrame(display_data)
     st.dataframe(final_df, use_container_width=True, hide_index=True)
 else:
     st.error(f"File '{MAIN_FILE}' not found!")
+
 
 
