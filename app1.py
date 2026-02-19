@@ -211,31 +211,29 @@ def df_to_pdf(df, title="SSC CGL 2025 Cutoff Report"):
     pdf.set_font("Arial", 'B', 14)
     pdf.cell(0, 10, title, ln=True, align="C")
     pdf.ln(5)
-    
-    # Set font for table
+
     pdf.set_font("Arial", '', 10)
-    
-    # Column widths
-    col_widths = [30] + [35]*6  # adjust widths as needed
+
     cols = df.columns.tolist()
-    
+    n_cols = len(cols)
+    page_width = pdf.w - 2*pdf.l_margin
+    col_width = page_width / n_cols  # equal width per column
+
     # Header
-    for i, col in enumerate(cols):
-        pdf.cell(col_widths[i], 8, str(col), border=1, align='C')
+    for col in cols:
+        pdf.cell(col_width, 8, str(col), border=1, align='C')
     pdf.ln()
-    
+
     # Rows
     for _, row in df.iterrows():
-        for i, col in enumerate(cols):
-            pdf.cell(col_widths[i], 6, str(row[col]), border=1)
+        for col in cols:
+            pdf.cell(col_width, 6, str(row[col]), border=1)
         pdf.ln()
-    
-    # Output to BytesIO
+
     pdf_buffer = io.BytesIO()
     pdf.output(pdf_buffer)
     pdf_buffer.seek(0)
     return pdf_buffer
-
 # --- PDF DOWNLOAD BUTTON ---
 pdf_buffer = df_to_pdf(full_df.drop(columns='PayLevelNum'))
 
@@ -245,6 +243,7 @@ st.download_button(
     file_name="SSC_CGL_2025_Cutoff_Report.pdf",
     mime="application/pdf"
 )
+
 
 
 
