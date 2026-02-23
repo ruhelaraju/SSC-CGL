@@ -121,7 +121,7 @@ def ssc_real_allocation(df_final, posts_df, comp_cutoff):
     vacancy_tracker = {}
 
     for _, row in posts_df.iterrows():
-    vacancy_tracker[row["Post"]] = {
+        vacancy_tracker[row["Post"]] = {
         "Level": row["Level"],
         "UR": row["UR"],
         "SC": row["SC"],
@@ -304,4 +304,5 @@ vacancy_result, final_df = ssc_real_allocation(
 
 else:
     st.warning("⚠️ CSV files not found.")
+
 
