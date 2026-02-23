@@ -224,13 +224,13 @@ if df_main is not None:
             f"{u_cat} Prediction": chance
 
         # Simplified for display
-        ur_cut = global_pool.iloc[min(row['UR'], len(global_pool)-1)]['Main Paper Marks'] if row['UR'] > 0 else 0
+            ur_cut = global_pool.iloc[min(row['UR'], len(global_pool)-1)]['Main Paper Marks'] if row['UR'] > 0 else 0
         
-        chance = "✅ HIGH" if u_marks >= ur_cut else "📉 LOW"
-        if u_comp < (u_c_min if row['IsCPT'] else u_b_min): chance = "❌ FAIL (Comp)"
+            chance = "✅ HIGH" if u_marks >= ur_cut else "📉 LOW"
+            if u_comp < (u_c_min if row['IsCPT'] else u_b_min): chance = "❌ FAIL (Comp)"
 
-        display_full.append({
-            "Level": row['Level'], "Post": row['Post'], "UR Cutoff": ur_cut, f"{u_cat} Prediction": chance
+            display_full.append({
+                "Level": row['Level'], "Post": row['Post'], "UR Cutoff": ur_cut, f"{u_cat} Prediction": chance
         })
 
     # 4. Professional Charts
@@ -254,3 +254,4 @@ if df_main is not None:
 
 else:
     st.warning("⚠️ Please ensure the CSV files are in the folder.")
+
