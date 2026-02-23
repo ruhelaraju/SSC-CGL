@@ -151,7 +151,6 @@ if df_main is not None:
 
     col1, col2, col3, col4 = st.columns(4)
     col1.metric("Predicted Rank", f"#{rank}", f"Top {100 - percentile:.1f}%")
-    col2.metric("Normalized Score", f"{u_marks * 1.05:.2f}", "+12.5")
     col3.metric("Computer Status", "PASS" if u_comp >= 18 else "FAIL")
     col4.metric("Total Sample", f"{total}")
 
@@ -245,3 +244,4 @@ if df_main is not None:
 
 else:
     st.warning("⚠️ Please ensure the CSV files are in the folder.")
+
