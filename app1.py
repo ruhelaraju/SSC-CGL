@@ -6,7 +6,12 @@ import io
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle
 from reportlab.lib import colors
 from reportlab.lib import pagesizes
-from reportlab.lib.cidfonts import UnicodeCIDFont
+try:
+    from reportlab.lib.cidfonts import UnicodeCIDFont
+    CID_FONT_SUPPORTED = True
+except ImportError:
+    CID_FONT_SUPPORTED = False
+    st.warning("PDF Unicode font not found. Using standard font instead.")
 from reportlab.pdfbase import pdfmetrics
 
 # --- PAGE CONFIG ---
@@ -108,26 +113,28 @@ def generate_pdf(df):
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=pagesizes.A4)
     elements = []
-    try:
-        pdfmetrics.registerFont(UnicodeCIDFont('HYSMyeongJo-Medium'))
-        font_name = 'HYSMyeongJo-Medium'
-    except:
-        font_name = 'Helvetica' # Fallback if CID font fails
+    
+    # फॉन्ट का चुनाव (Selection)
+    if CID_FONT_SUPPORTED:
+        try:
+            pdfmetrics.registerFont(UnicodeCIDFont('HYSMyeongJo-Medium'))
+            font_name = 'HYSMyeongJo-Medium'
+        except:
+            font_name = 'Helvetica'
+    else:
+        font_name = 'Helvetica'
 
     data = [df.columns.tolist()] + df.astype(str).values.tolist()
     table = Table(data, repeatRows=1)
     table.setStyle(TableStyle([
         ('FONTNAME', (0,0), (-1,-1), font_name),
         ('FONTSIZE', (0,0), (-1,-1), 7),
-        ('BACKGROUND', (0,0), (-1,0), colors.lightgrey),
         ('GRID', (0,0), (-1,-1), 0.5, colors.grey),
-        ('ALIGN', (0,0), (-1,-1), 'CENTER')
     ]))
     elements.append(table)
     doc.build(elements)
     buffer.seek(0)
     return buffer
-
 # --- MAIN APP LOGIC ---
 st.title("🏆 SSC CGL 2025 Rank & Post Predictor")
 
@@ -232,3 +239,4 @@ if df_main is not None:
 
 else:
     st.warning("⚠️ Please ensure the CSV files are in the folder.")
+
