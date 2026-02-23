@@ -248,32 +248,32 @@ vacancy_result, final_df = ssc_real_allocation(
 )
 
     # -------- Rank & Percentile -------- #
-    rank = final_df[final_df["Main Paper Marks"] >= u_marks].shape[0] + 1
-    total = len(final_df)
-    percentile = (1 - rank / total) * 100
+rank = final_df[final_df["Main Paper Marks"] >= u_marks].shape[0] + 1
+total = len(final_df)
+percentile = (1 - rank / total) * 100
 
-    c1, c2, c3 = st.columns(3)
-    c1.metric("Predicted Rank", f"#{rank}")
-    c2.metric("Percentile", f"{percentile:.2f}%")
-    c3.metric("Total Candidates", total)
+c1, c2, c3 = st.columns(3)
+c1.metric("Predicted Rank", f"#{rank}")
+c2.metric("Percentile", f"{percentile:.2f}%")
+c3.metric("Total Candidates", total)
 
     # -------- Post-wise Cutoff -------- #
-    display = []
+display = []
 
-    for post, info in vacancy_result.items():
+for post, info in vacancy_result.items():
 
-        cutoff = info["Cutoff"]
+    cutoff = info["Cutoff"]
 
-        if cutoff > 0 and u_marks >= cutoff:
-            chance = "⭐ HIGH"
-        else:
-            chance = "📉 LOW"
+    if cutoff > 0 and u_marks >= cutoff:
+         chance = "⭐ HIGH"
+    else:
+        chance = "📉 LOW"
 
-        display.append({
-            "Post": post,
-            "Final SSC Cutoff": cutoff,
-            "Your Status": chance
-        })
+    display.append({
+         "Post": post,
+         "Final SSC Cutoff": cutoff,
+          "Your Status": chance
+     })
 
     result_df = pd.DataFrame(display)
 
@@ -304,5 +304,6 @@ vacancy_result, final_df = ssc_real_allocation(
 
 else:
     st.warning("⚠️ CSV files not found.")
+
 
 
