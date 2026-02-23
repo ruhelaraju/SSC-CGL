@@ -121,16 +121,18 @@ def ssc_real_allocation(df_final, posts_df, comp_cutoff):
     vacancy_tracker = {}
 
     for _, row in posts_df.iterrows():
-        vacancy_tracker[row["Post"]] = {
-            "UR": row["UR"],
-            "SC": row["SC"],
-            "ST": row["ST"],
-            "OBC": row["OBC"],
-            "EWS": row["EWS"],
-            "IsCPT": row["IsCPT"],
-            "IsStat": row["IsStat"],
-            "Cutoff": 0
-        }
+    vacancy_tracker[row["Post"]] = {
+        "Level": row["Level"],
+        "UR": row["UR"],
+        "SC": row["SC"],
+        "ST": row["ST"],
+        "OBC": row["OBC"],
+        "EWS": row["EWS"],
+        "Total": row["Total"],
+        "IsCPT": row["IsCPT"],
+        "IsStat": row["IsStat"],
+        "Cutoff": 0
+    }
 
     for idx, candidate in df_sorted.iterrows():
 
@@ -225,15 +227,25 @@ if df_main is not None:
         df_final["Stat Marks"] = 0
 
     posts = get_full_vacancy_list()
+
     posts_df = pd.DataFrame(posts, columns=[
-        "Post", "UR", "SC", "ST", "OBC", "EWS", "IsCPT", "IsStat"
+        "Level",
+        "Post",
+        "UR",
+        "SC",
+        "ST",
+        "OBC",
+        "EWS",
+        "Total",
+        "IsCPT",
+        "IsStat"
     ])
 
-    comp_cutoff = 18
+comp_cutoff = 18
 
-    vacancy_result, final_df = ssc_real_allocation(
-        df_final, posts_df, comp_cutoff
-    )
+vacancy_result, final_df = ssc_real_allocation(
+    df_final, posts_df, comp_cutoff
+)
 
     # -------- Rank & Percentile -------- #
     rank = final_df[final_df["Main Paper Marks"] >= u_marks].shape[0] + 1
@@ -292,3 +304,4 @@ if df_main is not None:
 
 else:
     st.warning("⚠️ CSV files not found.")
+
