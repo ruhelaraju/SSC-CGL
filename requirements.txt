@@ -5,5 +5,7 @@ fpdf
 fpdf2
 reportlab
 plotly
-UnicodeCIDFont
+
+
+
 
