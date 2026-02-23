@@ -12,7 +12,7 @@ from reportlab.pdfbase import pdfmetrics
 # --- PAGE CONFIG ---
 st.set_page_config(page_title="SSC CGL 2025 Optimized Predictor", layout="wide")
 
-# --- CUSTOM CSS (From JS logic) ---
+# --- CUSTOM CSS ---
 st.markdown("""
     <style>
     .stMetric { background-color: #ffffff; padding: 15px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); border: 1px solid #eee; }
@@ -100,7 +100,7 @@ def get_full_vacancy_list():
         ("L-4", "BRO - UDC/SSA", 20, 1, 0, 0, 4, 25, False, False),
         ("L-4", "Agriculture - UDC/SSA", 2, 0, 0, 0, 1, 3, False, False),
         ("L-4", "Health - UDC/SSA", 1, 0, 0, 0, 0, 1, False, False),
-        ("L-4", "Dept of Post - PA/SA", 0, 0, 0, 0, 0, 0, True, False)       
+        ("L-4", "Dept of Post - PA/SA", 0, 0, 0, 0, 0, 0, True, False)
     ]
 
 # --- PDF GENERATOR ---
@@ -108,11 +108,16 @@ def generate_pdf(df):
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=pagesizes.A4)
     elements = []
-    pdfmetrics.registerFont(UnicodeCIDFont('HYSMyeongJo-Medium'))
+    try:
+        pdfmetrics.registerFont(UnicodeCIDFont('HYSMyeongJo-Medium'))
+        font_name = 'HYSMyeongJo-Medium'
+    except:
+        font_name = 'Helvetica' # Fallback if CID font fails
+
     data = [df.columns.tolist()] + df.astype(str).values.tolist()
     table = Table(data, repeatRows=1)
     table.setStyle(TableStyle([
-        ('FONTNAME', (0,0), (-1,-1), 'HYSMyeongJo-Medium'),
+        ('FONTNAME', (0,0), (-1,-1), font_name),
         ('FONTSIZE', (0,0), (-1,-1), 7),
         ('BACKGROUND', (0,0), (-1,0), colors.lightgrey),
         ('GRID', (0,0), (-1,-1), 0.5, colors.grey),
@@ -126,14 +131,12 @@ def generate_pdf(df):
 # --- MAIN APP LOGIC ---
 st.title("🏆 SSC CGL 2025 Rank & Post Predictor")
 
-# 1. User Inputs (Sidebar)
 st.sidebar.header("Step 1: Your Profile")
 u_marks = st.sidebar.number_input("Main Paper Marks", 0.0, 390.0, 310.0)
 u_stat = st.sidebar.number_input("Statistics Marks", 0.0, 200.0, 0.0)
 u_cat = st.sidebar.selectbox("Category", ["UR", "OBC", "EWS", "SC", "ST"])
 u_comp = st.sidebar.number_input("Computer Marks", 0.0, 60.0, 25.0)
 
-# Files
 MAIN_FILE = "CSV - SSC CGL Mains 2025 Marks List.xlsx - in.csv"
 STAT_FILE = "CSV - SSC CGL Mains 2025 Statistics Paper Marks List (1).csv"
 
@@ -141,7 +144,6 @@ df_main, main_key = load_and_clean_data(MAIN_FILE)
 df_stat, stat_key = load_stat_data(STAT_FILE)
 
 if df_main is not None:
-    # Merge Logic
     if df_stat is not None:
         df_final = pd.merge(df_main, df_stat, left_on=main_key, right_on=stat_key, how='left').fillna(0)
     else:
@@ -150,18 +152,16 @@ if df_main is not None:
     
     df_final['Total_Stat_Marks'] = df_final['Main Paper Marks'] + df_final['Stat Marks']
     
-    # 2. Top Metrics (Visual Layer)
     rank = df_final[df_final['Main Paper Marks'] >= u_marks].shape[0] + 1
     total = len(df_final)
     percentile = (1 - (rank/total)) * 100
     
     col1, col2, col3, col4 = st.columns(4)
     col1.metric("Predicted Rank", f"#{rank}", f"Top {100-percentile:.1f}%")
-    col2.metric("Normalized Score", f"{u_marks * 1.05:.2f}", "+12.5") # Example norm
+    col2.metric("Normalized Score", f"{u_marks * 1.05:.2f}", "+12.5")
     col3.metric("Computer Status", "PASS" if u_comp >= 18 else "FAIL")
     col4.metric("Total Sample", f"{total}")
 
-    # 3. Cutoff & Post Logic
     cutoffs_rules = {'UR': (18, 27), 'OBC': (15, 24), 'EWS': (15, 24), 'SC': (12, 21), 'ST': (12, 21)}
     u_b_min, u_c_min = cutoffs_rules.get(u_cat, (12, 21))
     
@@ -170,11 +170,10 @@ if df_main is not None:
     
     display_full = []
     global_pool = df_final.sort_values(by='Main Paper Marks', ascending=False).copy()
-    allocated_indices = set()
+    allocated_indices_full = set() # FIXED: Initialize the set correctly
 
     for _, row in posts_df.iterrows():
-        lvl = row['Level']
-        name = row['Post']
+        lvl, name = row['Level'], row['Post']
         ur_v, sc_v, st_v, obc_v, ews_v = row['UR'], row['SC'], row['ST'], row['OBC'], row['EWS']
         is_cpt, is_stat = row['IsCPT'], row['IsStat']
 
@@ -185,8 +184,8 @@ if df_main is not None:
         ur_candidates = pool.head(ur_v)
         ur_cut = ur_candidates[score_col].min() if not ur_candidates.empty else 0
         allocated_indices_full.update(ur_candidates.index)
-    
-        cat_v_map = {'SC': st_v, 'ST': st_v, 'OBC': obc_v, 'EWS': ews_v}
+
+        cat_v_map = {'SC': sc_v, 'ST': st_v, 'OBC': obc_v, 'EWS': ews_v}
         cat_cutoffs = {}
         user_cat_cut = 0
         for cat, vac in cat_v_map.items():
@@ -198,8 +197,7 @@ if df_main is not None:
             cat_cut = cat_pool[score_col].min() if not cat_pool.empty else 0
             cat_cutoffs[cat] = cat_cut if cat_cut > 0 else "N/A"
             allocated_indices_full.update(cat_pool.index)
-            if cat == u_cat:
-                user_cat_cut = cat_cut
+            if cat == u_cat: user_cat_cut = cat_cut
 
         req_comp = u_c_min if is_cpt else u_b_min
         if u_comp < req_comp:
@@ -214,37 +212,17 @@ if df_main is not None:
             chance = "📉 LOW CHANCE"
 
         display_full.append({
-            "Pay Level": lvl,
-            "Post": name,
-            "UR Cutoff": ur_cut if ur_cut > 0 else "N/A",
-            "SC Cutoff": cat_cutoffs.get('SC', "N/A"),
-            "ST Cutoff": cat_cutoffs.get('ST', "N/A"),
-            "OBC Cutoff": cat_cutoffs.get('OBC', "N/A"),
-            "EWS Cutoff": cat_cutoffs.get('EWS', "N/A"),
-            f"{u_cat} Prediction": chance
-
-        # Simplified for display
-            ur_cut = global_pool.iloc[min(row['UR'], len(global_pool)-1)]['Main Paper Marks'] if row['UR'] > 0 else 0
-        
-            chance = "✅ HIGH" if u_marks >= ur_cut else "📉 LOW"
-            if u_comp < (u_c_min if row['IsCPT'] else u_b_min): chance = "❌ FAIL (Comp)"
-
-            display_full.append({
-                "Level": row['Level'], "Post": row['Post'], "UR Cutoff": ur_cut, f"{u_cat} Prediction": chance
+            "Pay Level": lvl, "Post": name, "UR Cutoff": ur_cut, 
+            "OBC Cutoff": cat_cutoffs.get('OBC'), f"{u_cat} Prediction": chance
         })
 
-    # 4. Professional Charts
     st.markdown("---")
     c1, c2 = st.columns(2)
     with c1:
-        fig = px.histogram(df_final, x="Main Paper Marks", title="Score Distribution", color_discrete_sequence=['#636EFA'])
-        fig.add_vline(x=u_marks, line_dash="dash", line_color="red")
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(px.histogram(df_final, x="Main Paper Marks", title="Score Distribution"), use_container_width=True)
     with c2:
-        fig2 = px.box(df_final, x="Category", y="Main Paper Marks", title="Category Spread")
-        st.plotly_chart(fig2, use_container_width=True)
+        st.plotly_chart(px.box(df_final, x="Category", y="Main Paper Marks", title="Category Spread"), use_container_width=True)
 
-    # 5. Final Table & Download
     st.subheader("📋 Post-wise Detailed Analysis")
     final_table_df = pd.DataFrame(display_full)
     st.dataframe(final_table_df, use_container_width=True)
@@ -254,4 +232,3 @@ if df_main is not None:
 
 else:
     st.warning("⚠️ Please ensure the CSV files are in the folder.")
-
