@@ -217,15 +217,20 @@ df_stat, stat_key = load_stat_data(STAT_FILE)
 
 if df_main is not None:
 
+    # Merge Statistics Data
     if df_stat is not None:
-        df_final = pd.merge(df_main, df_stat,
-                            left_on=main_key,
-                            right_on=stat_key,
-                            how='left').fillna(0)
+        df_final = pd.merge(
+            df_main,
+            df_stat,
+            left_on=main_key,
+            right_on=stat_key,
+            how='left'
+        ).fillna(0)
     else:
         df_final = df_main.copy()
         df_final["Stat Marks"] = 0
 
+    # Create Posts DataFrame
     posts = get_full_vacancy_list()
 
     posts_df = pd.DataFrame(posts, columns=[
@@ -241,39 +246,39 @@ if df_main is not None:
         "IsStat"
     ])
 
-comp_cutoff = 18
+    comp_cutoff = 18
 
-vacancy_result, final_df = ssc_real_allocation(
-    df_final, posts_df, comp_cutoff
-)
+    vacancy_result, final_df = ssc_real_allocation(
+        df_final, posts_df, comp_cutoff
+    )
 
     # -------- Rank & Percentile -------- #
-rank = final_df[final_df["Main Paper Marks"] >= u_marks].shape[0] + 1
-total = len(final_df)
-percentile = (1 - rank / total) * 100
+    rank = final_df[final_df["Main Paper Marks"] >= u_marks].shape[0] + 1
+    total = len(final_df)
+    percentile = (1 - rank / total) * 100
 
-c1, c2, c3 = st.columns(3)
-c1.metric("Predicted Rank", f"#{rank}")
-c2.metric("Percentile", f"{percentile:.2f}%")
-c3.metric("Total Candidates", total)
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Predicted Rank", f"#{rank}")
+    c2.metric("Percentile", f"{percentile:.2f}%")
+    c3.metric("Total Candidates", total)
 
     # -------- Post-wise Cutoff -------- #
-display = []
+    display = []
 
-for post, info in vacancy_result.items():
+    for post, info in vacancy_result.items():
 
-    cutoff = info["Cutoff"]
+        cutoff = info["Cutoff"]
 
-    if cutoff > 0 and u_marks >= cutoff:
-         chance = "⭐ HIGH"
-    else:
-        chance = "📉 LOW"
+        if cutoff > 0 and u_marks >= cutoff:
+            chance = "⭐ HIGH"
+        else:
+            chance = "📉 LOW"
 
-    display.append({
-         "Post": post,
-         "Final SSC Cutoff": cutoff,
-          "Your Status": chance
-     })
+        display.append({
+            "Post": post,
+            "Final SSC Cutoff": cutoff,
+            "Your Status": chance
+        })
 
     result_df = pd.DataFrame(display)
 
@@ -290,17 +295,28 @@ for post, info in vacancy_result.items():
     else:
         st.error("No Allotment Based on Current Score")
 
-    # -------- Charts -------- #
-    st.plotly_chart(px.histogram(df_final, x="Main Paper Marks",
-                                 title="Score Distribution"),
-                    use_container_width=True)
+    # -------- Charts (FIXED WITH KEY) -------- #
+    fig = px.histogram(
+        df_final,
+        x="Main Paper Marks",
+        title="Score Distribution"
+    )
+
+    st.plotly_chart(
+        fig,
+        use_container_width=True,
+        key="score_distribution_chart"
+    )
 
     # -------- PDF -------- #
     pdf = generate_pdf(result_df)
-    st.download_button("⬇️ Download Full SSC Report",
-                       data=pdf,
-                       file_name="SSC_CGL_SSC_Rule_Report.pdf",
-                       mime="application/pdf")
+
+    st.download_button(
+        "⬇️ Download Full SSC Report",
+        data=pdf,
+        file_name="SSC_CGL_SSC_Rule_Report.pdf",
+        mime="application/pdf"
+    )
 
 else:
     st.warning("⚠️ CSV files not found.")
