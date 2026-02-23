@@ -8,26 +8,16 @@ from reportlab.lib import colors
 from reportlab.lib import pagesizes
 from reportlab.pdfbase import pdfmetrics
 
-# ✅ FIXED CID FONT IMPORT
 try:
     from reportlab.pdfbase.cidfonts import UnicodeCIDFont
     CID_FONT_SUPPORTED = True
-except ImportError:
+except:
     CID_FONT_SUPPORTED = False
-    st.warning("PDF Unicode font not found. Using standard font instead.")
 
-# --- PAGE CONFIG ---
-st.set_page_config(page_title="SSC CGL 2025 Optimized Predictor", layout="wide")
+st.set_page_config(page_title="SSC CGL 2025 SSC-Rule Predictor", layout="wide")
 
-# --- CUSTOM CSS ---
-st.markdown("""
-    <style>
-    .stMetric { background-color: #ffffff; padding: 15px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); border: 1px solid #eee; }
-    .main { background-color: #f8f9fa; }
-    </style>
-    """, unsafe_allow_html=True)
+# ---------------- DATA LOADING ---------------- #
 
-# --- DATA LOADING & CLEANING ---
 @st.cache_data
 def load_and_clean_data(file_name):
     if not os.path.exists(file_name):
@@ -46,7 +36,6 @@ def load_and_clean_data(file_name):
     df['Computer Marks'] = pd.to_numeric(df['Computer Marks'], errors='coerce')
 
     df = df.dropna(subset=['Main Paper Marks', 'Category', 'Computer Marks'])
-
     return df, key_col
 
 
@@ -64,7 +53,8 @@ def load_stat_data(file_name):
     return df[[key_col, 'Stat Marks']], key_col
 
 
-# --- VACANCY LIST ---
+# ---------------- VACANCIES ---------------- #
+
 def get_full_vacancy_list():
     return [
         ("L-7", "CSS (DoPT) - ASO", 273, 104, 52, 185, 68, 682, True, False),
@@ -87,23 +77,110 @@ def get_full_vacancy_list():
         ("L-6", "CBDT - Office Superintendent", 2766, 1012, 496, 1822, 657, 6753, False, False),
         ("L-6", "RGI - Statistical Investigator Gr. II", 50, 18, 12, 28, 10, 118, False, True),
         ("L-6", "MoSPI - Junior Statistical Officer", 124, 47, 15, 36, 27, 249, False, True),
+        ("L-6", "ED - Assistant", 0, 0, 0, 3, 0, 3, False, False),
+        ("L-6", "TRAI - Assistant", 2, 1, 0, 0, 0, 3, False, False),
+        ("L-6", "Official Language - Assistant", 4, 0, 0, 1, 0, 5, False, False),
+        ("L-6", "MCA - Assistant", 0, 1, 0, 0, 0, 1, False, False),
+        ("L-6", "Mines - Assistant", 11, 2, 2, 3, 4, 22, True, False),
+        ("L-6", "Textiles - Assistant", 1, 0, 0, 0, 0, 1, False, False),
+        ("L-6", "Indian Coast Guard - Assistant", 8, 3, 1, 5, 1, 18, False, False),
+        ("L-6", "DFSS - Assistant", 1, 0, 0, 1, 1, 3, False, False),
+        ("L-6", "NCB - ASO", 7, 1, 1, 2, 0, 11, False, False),
+        ("L-6", "NCB - Sub-Inspector/JIO", 10, 3, 4, 8, 5, 30, False, False),
+        ("L-6", "NIA - Sub Inspector", 6, 2, 1, 3, 2, 14, False, False),
+        ("L-6", "MoSPI - Assistant", 0, 0, 0, 2, 0, 2, False, False),
+        ("L-5", "CGDA - Auditor", 477, 176, 88, 316, 117, 1174, False, False),
+        ("L-5", "C&AG - Accountant", 86, 31, 17, 28, 18, 180, False, False),
+        ("L-5", "Posts - Accountant", 42, 13, 6, 12, 3, 76, False, False),
+        ("L-5", "CGCA - Accountant", 15, 6, 3, 9, 3, 36, False, False),
+        ("L-4", "CBIC - Tax Assistant", 256, 136, 82, 203, 94, 771, True, False),
+        ("L-4", "CBDT - Tax Assistant", 572, 171, 80, 340, 86, 1249, False, False),
+        ("L-4", "MSME - UDC/SSA", 25, 4, 5, 16, 5, 55, False, False),
+        ("L-4", "Science & Tech - UDC/SSA", 24, 9, 4, 16, 6, 59, False, False),
+        ("L-4", "CBN - UDC/SSA", 12, 2, 0, 5, 2, 21, False, False),
+        ("L-4", "CBN - Sub-Inspector", 11, 2, 0, 6, 0, 19, False, False),
+        ("L-4", "Mines - UDC/SSA", 13, 2, 3, 4, 4, 26, False, False),
+        ("L-4", "DGDE - UDC/SSA", 7, 2, 1, 3, 1, 14, False, False),
+        ("L-4", "MeitY - UDC/SSA", 5, 1, 1, 2, 1, 10, False, False),
+        ("L-4", "Textiles - UDC/SSA", 4, 0, 1, 1, 2, 8, False, False),
+        ("L-4", "Water Resources - UDC/SSA", 5, 0, 0, 0, 0, 5, False, False),
+        ("L-4", "BRO - UDC/SSA", 20, 1, 0, 0, 4, 25, False, False),
+        ("L-4", "Agriculture - UDC/SSA", 2, 0, 0, 0, 1, 3, False, False),
+        ("L-4", "Health - UDC/SSA", 1, 0, 0, 0, 0, 1, False, False),
+        ("L-4", "Dept of Post - PA/SA", 0, 0, 0, 0, 0, 0, True, False)
     ]
 
 
-# --- PDF GENERATOR ---
+# ---------------- SSC REAL ENGINE ---------------- #
+
+def ssc_real_allocation(df_final, posts_df, comp_cutoff):
+
+    df_sorted = df_final.sort_values(by="Main Paper Marks", ascending=False).copy()
+    df_sorted["Allotted_Post"] = None
+
+    vacancy_tracker = {}
+
+    for _, row in posts_df.iterrows():
+        vacancy_tracker[row["Post"]] = {
+            "UR": row["UR"],
+            "SC": row["SC"],
+            "ST": row["ST"],
+            "OBC": row["OBC"],
+            "EWS": row["EWS"],
+            "IsCPT": row["IsCPT"],
+            "IsStat": row["IsStat"],
+            "Cutoff": 0
+        }
+
+    for idx, candidate in df_sorted.iterrows():
+
+        candidate_score = candidate["Main Paper Marks"]
+        candidate_cat = candidate["Category"]
+        candidate_stat = candidate.get("Stat Marks", 0)
+
+        for post in vacancy_tracker.keys():
+
+            post_info = vacancy_tracker[post]
+
+            score = candidate_score + candidate_stat if post_info["IsStat"] else candidate_score
+
+            if post_info["IsStat"] and candidate_stat == 0:
+                continue
+
+            if post_info["IsCPT"] and candidate["Computer Marks"] < comp_cutoff:
+                continue
+
+            # UR first
+            if post_info["UR"] > 0:
+                post_info["UR"] -= 1
+                post_info["Cutoff"] = score
+                df_sorted.at[idx, "Allotted_Post"] = post
+                break
+
+            # Reserved
+            if post_info.get(candidate_cat, 0) > 0:
+                post_info[candidate_cat] -= 1
+                post_info["Cutoff"] = score
+                df_sorted.at[idx, "Allotted_Post"] = post
+                break
+
+    return vacancy_tracker, df_sorted
+
+
+# ---------------- PDF ---------------- #
+
 def generate_pdf(df):
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=pagesizes.A4)
     elements = []
 
+    font_name = "Helvetica"
     if CID_FONT_SUPPORTED:
         try:
             pdfmetrics.registerFont(UnicodeCIDFont('HYSMyeongJo-Medium'))
             font_name = 'HYSMyeongJo-Medium'
         except:
-            font_name = 'Helvetica'
-    else:
-        font_name = 'Helvetica'
+            pass
 
     data = [df.columns.tolist()] + df.astype(str).values.tolist()
 
@@ -120,10 +197,11 @@ def generate_pdf(df):
     return buffer
 
 
-# --- MAIN APP ---
-st.title("🏆 SSC CGL 2025 Rank & Post Predictor")
+# ---------------- APP UI ---------------- #
 
-st.sidebar.header("Step 1: Your Profile")
+st.title("🏆 SSC CGL 2025 Real SSC Rule Predictor")
+
+st.sidebar.header("Your Profile")
 u_marks = st.sidebar.number_input("Main Paper Marks", 0.0, 390.0, 310.0)
 u_stat = st.sidebar.number_input("Statistics Marks", 0.0, 200.0, 0.0)
 u_cat = st.sidebar.selectbox("Category", ["UR", "OBC", "EWS", "SC", "ST"])
@@ -138,110 +216,79 @@ df_stat, stat_key = load_stat_data(STAT_FILE)
 if df_main is not None:
 
     if df_stat is not None:
-        df_final = pd.merge(df_main, df_stat, left_on=main_key, right_on=stat_key, how='left').fillna(0)
+        df_final = pd.merge(df_main, df_stat,
+                            left_on=main_key,
+                            right_on=stat_key,
+                            how='left').fillna(0)
     else:
         df_final = df_main.copy()
-        df_final['Stat Marks'] = 0
-
-    df_final['Total_Stat_Marks'] = df_final['Main Paper Marks'] + df_final['Stat Marks']
-
-    rank = df_final[df_final['Main Paper Marks'] >= u_marks].shape[0] + 1
-    total = len(df_final)
-    percentile = (1 - (rank / total)) * 100
-
-    col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Predicted Rank", f"#{rank}", f"Top {100 - percentile:.1f}%")
-    col3.metric("Computer Status", "PASS" if u_comp >= 18 else "FAIL")
-    col4.metric("Total Sample", f"{total}")
-
-    cutoffs_rules = {'UR': (18, 27), 'OBC': (15, 24), 'EWS': (15, 24), 'SC': (12, 21), 'ST': (12, 21)}
-    u_b_min, u_c_min = cutoffs_rules.get(u_cat, (12, 21))
+        df_final["Stat Marks"] = 0
 
     posts = get_full_vacancy_list()
-    posts_df = pd.DataFrame(posts, columns=['Level', 'Post', 'UR', 'SC', 'ST', 'OBC', 'EWS', 'Total', 'IsCPT', 'IsStat'])
+    posts_df = pd.DataFrame(posts, columns=[
+        "Post", "UR", "SC", "ST", "OBC", "EWS", "IsCPT", "IsStat"
+    ])
 
-    display_full = []
-    allocated_indices_full = set()
+    comp_cutoff = 18
 
-    global_pool = df_final.copy()
+    vacancy_result, final_df = ssc_real_allocation(
+        df_final, posts_df, comp_cutoff
+    )
 
-    for _, row in posts_df.iterrows():
+    # -------- Rank & Percentile -------- #
+    rank = final_df[final_df["Main Paper Marks"] >= u_marks].shape[0] + 1
+    total = len(final_df)
+    percentile = (1 - rank / total) * 100
 
-        lvl, name = row['Level'], row['Post']
-        ur_v, sc_v, st_v, obc_v, ews_v = row['UR'], row['SC'], row['ST'], row['OBC'], row['EWS']
-        is_cpt, is_stat = row['IsCPT'], row['IsStat']
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Predicted Rank", f"#{rank}")
+    c2.metric("Percentile", f"{percentile:.2f}%")
+    c3.metric("Total Candidates", total)
 
-        score_col = 'Total_Stat_Marks' if is_stat else 'Main Paper Marks'
-        user_score = (u_marks + u_stat) if is_stat else u_marks
+    # -------- Post-wise Cutoff -------- #
+    display = []
 
-        pool = global_pool[~global_pool.index.isin(allocated_indices_full)]
-        pool_sorted = pool.sort_values(by=score_col, ascending=False)
+    for post, info in vacancy_result.items():
 
-        # UR Allocation
-        ur_candidates = pool_sorted.head(ur_v)
-        ur_cut = ur_candidates[score_col].min() if not ur_candidates.empty else 0
-        allocated_indices_full.update(ur_candidates.index)
+        cutoff = info["Cutoff"]
 
-        # Category Allocation
-        cat_v_map = {'SC': sc_v, 'ST': st_v, 'OBC': obc_v, 'EWS': ews_v}
-        cat_cutoffs = {}
-        user_cat_cut = 0
-
-        for cat, vac in cat_v_map.items():
-
-            if vac == 0:
-                cat_cutoffs[cat] = "N/A"
-                continue
-
-            cat_pool = pool_sorted[
-                (~pool_sorted.index.isin(allocated_indices_full)) &
-                (pool_sorted['Category'] == cat)
-            ].head(vac)
-
-            cat_cut = cat_pool[score_col].min() if not cat_pool.empty else 0
-            cat_cutoffs[cat] = cat_cut if cat_cut > 0 else "N/A"
-
-            allocated_indices_full.update(cat_pool.index)
-
-            if cat == u_cat:
-                user_cat_cut = cat_cut
-
-        req_comp = u_c_min if is_cpt else u_b_min
-
-        if u_comp < req_comp:
-            chance = "❌ FAIL (Comp)"
-        elif is_stat and u_stat == 0:
-            chance = "⚠️ Stat Paper Absent"
-        elif user_score >= ur_cut and ur_cut > 0:
-            chance = "⭐ HIGH (UR Merit)"
-        elif user_score >= user_cat_cut and user_cat_cut > 0:
-            chance = "✅ HIGH CHANCE"
+        if cutoff > 0 and u_marks >= cutoff:
+            chance = "⭐ HIGH"
         else:
-            chance = "📉 LOW CHANCE"
+            chance = "📉 LOW"
 
-        display_full.append({
-            "Pay Level": lvl,
-            "Post": name,
-            "UR Cutoff": ur_cut,
-            "OBC Cutoff": cat_cutoffs.get('OBC'),
-            f"{u_cat} Prediction": chance
+        display.append({
+            "Post": post,
+            "Final SSC Cutoff": cutoff,
+            "Your Status": chance
         })
 
-    st.markdown("---")
+    result_df = pd.DataFrame(display)
 
-    c1, c2 = st.columns(2)
-    with c1:
-        st.plotly_chart(px.histogram(df_final, x="Main Paper Marks", title="Score Distribution"), use_container_width=True)
-    with c2:
-        st.plotly_chart(px.box(df_final, x="Category", y="Main Paper Marks", title="Category Spread"), use_container_width=True)
+    st.subheader("📊 SSC Final Cutoff (Simulated)")
+    st.dataframe(result_df, use_container_width=True)
 
-    st.subheader("📋 Post-wise Detailed Analysis")
-    final_table_df = pd.DataFrame(display_full)
-    st.dataframe(final_table_df, use_container_width=True)
+    # -------- Predicted Allotment -------- #
+    predicted_post = result_df[
+        result_df["Your Status"] == "⭐ HIGH"
+    ]["Post"].head(1)
 
-    pdf_file = generate_pdf(final_table_df)
-    st.download_button("⬇️ Download Full Report (PDF)", data=pdf_file, file_name="SSC_CGL_Report.pdf", mime="application/pdf")
+    if not predicted_post.empty:
+        st.success(f"🎯 Predicted Allotted Post: {predicted_post.values[0]}")
+    else:
+        st.error("No Allotment Based on Current Score")
+
+    # -------- Charts -------- #
+    st.plotly_chart(px.histogram(df_final, x="Main Paper Marks",
+                                 title="Score Distribution"),
+                    use_container_width=True)
+
+    # -------- PDF -------- #
+    pdf = generate_pdf(result_df)
+    st.download_button("⬇️ Download Full SSC Report",
+                       data=pdf,
+                       file_name="SSC_CGL_SSC_Rule_Report.pdf",
+                       mime="application/pdf")
 
 else:
-    st.warning("⚠️ Please ensure the CSV files are in the folder.")
-
+    st.warning("⚠️ CSV files not found.")
