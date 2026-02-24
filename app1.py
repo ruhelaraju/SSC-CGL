@@ -113,166 +113,120 @@ def get_full_vacancy_list():
 
 # ---------------- SSC REAL ENGINE ---------------- #
 
-def ssc_real_allocation(
-    df_final,
-    posts_df,
-    mode="real"  # "real" OR "all_qualified"
-):
+def ssc_real_allocation(df_final, posts_df, mode="real"):
 
-    df_final = df_final.copy()
-    df_final["Allotted_Post"] = None
-    df_final["Allotted_Category"] = None
+    import pandas as pd
 
-    # -----------------------------
-    # Qualification Functions
-    # -----------------------------
+    df = df_final.copy()
+    posts = posts_df.copy()
 
-    def is_computer_qualified(row):
-        if mode == "all_qualified":
-            return True
+    # -------------------------------
+    # 1️⃣ Define Qualification Rules
+    # -------------------------------
 
-        cat = row["Category"]
-        comp = row["Computer Marks"]
+    cpt_cutoff = {
+        "UR": 27,
+        "OBC": 24,
+        "EWS": 24,
+        "SC": 21,
+        "ST": 21
+    }
 
-        if cat == "UR":
-            return comp >= 18
-        elif cat in ["OBC", "EWS"]:
-            return comp >= 15
-        elif cat in ["SC", "ST"]:
-            return comp >= 12
-        return False
+    computer_cutoff = {
+        "UR": 18,
+        "OBC": 15,
+        "EWS": 15,
+        "SC": 12,
+        "ST": 12
+    }
 
-    def is_cpt_qualified(row):
-        if mode == "all_qualified":
-            return True
+    # -------------------------------
+    # 2️⃣ Apply Qualification Filters
+    # -------------------------------
 
-        cat = row["Category"]
-        comp = row["Computer Marks"]
-
-        if cat == "UR":
-            return comp >= 27
-        elif cat in ["OBC", "EWS"]:
-            return comp >= 24
-        elif cat in ["SC", "ST"]:
-            return comp >= 21
-        return False
-
-    # --------------------------------
-    # Remove computer non-qualified
-    # --------------------------------
     if mode == "real":
-        df_final = df_final[df_final.apply(is_computer_qualified, axis=1)]
 
-    vacancy_tracker = {}
+        def is_cpt_qualified(row):
+            return row["Computer Marks"] >= cpt_cutoff.get(row["Category"], 0)
 
-    # --------------------------------
-    # Initialize vacancy structure
-    # --------------------------------
-    for _, row in posts_df.iterrows():
-        vacancy_tracker[row["Post"]] = {
-            "Vacancy": {
-                "UR": row["UR"],
-                "SC": row["SC"],
-                "ST": row["ST"],
-                "OBC": row["OBC"],
-                "EWS": row["EWS"],
-            },
-            "IsCPT": row["IsCPT"],
-            "IsStat": row["IsStat"],
-            "Cutoff": {
-                "UR": 0,
-                "SC": 0,
-                "ST": 0,
-                "OBC": 0,
-                "EWS": 0
-            }
-        }
+        def is_computer_qualified(row):
+            return row["Computer Marks"] >= computer_cutoff.get(row["Category"], 0)
 
-    # --------------------------------
-    # PROCESS EACH POST
-    # --------------------------------
-    for post in vacancy_tracker.keys():
+        df["CPT_Qualified"] = df.apply(is_cpt_qualified, axis=1)
+        df["Computer_Qualified"] = df.apply(is_computer_qualified, axis=1)
 
-        post_info = vacancy_tracker[post]
+    else:
+        # Simulation Mode → Everyone qualified
+        df["CPT_Qualified"] = True
+        df["Computer_Qualified"] = True
 
-        # Merit Score
-        if post_info["IsStat"]:
-            df_final["Merit_Score"] = (
-                df_final["Main Paper Marks"] +
-                df_final["Stat Marks"]
-            )
-        else:
-            df_final["Merit_Score"] = df_final["Main Paper Marks"]
+    # -------------------------------
+    # 3️⃣ Sort By Merit (High to Low)
+    # -------------------------------
 
-        eligible_df = df_final[
-            df_final["Allotted_Post"].isna()
-        ].copy()
+    df = df.sort_values("Total Marks", ascending=False).reset_index(drop=True)
 
-        # Statistical eligibility
-        if post_info["IsStat"]:
-            eligible_df = eligible_df[
-                eligible_df["Stat Marks"] > 0
-            ]
+    df["Allocated_Post"] = None
+    df["Allocated_Category"] = None
 
-        # CPT eligibility
-        if post_info["IsCPT"]:
-            if mode == "real":
-                eligible_df = eligible_df[
-                    eligible_df.apply(is_cpt_qualified, axis=1)
-                ]
+    vacancy_tracker = []
 
-        # Sort by merit
-        eligible_df = eligible_df.sort_values(
-            by="Merit_Score",
-            ascending=False
-        )
+    # -------------------------------
+    # 4️⃣ Allocation Logic
+    # -------------------------------
 
-        # -------------------------
-        # STEP 1 – Fill UR
-        # -------------------------
-        ur_vac = post_info["Vacancy"]["UR"]
+    for index, candidate in df.iterrows():
 
-        for idx, candidate in eligible_df.iterrows():
-            if ur_vac <= 0:
+        category = candidate["Category"]
+
+        for p_index, post in posts.iterrows():
+
+            post_name = post["Post Name"]
+            post_type = post["Post Type"]  # "CPT" or "Non-CPT"
+
+            # Qualification Check
+            if post_type == "CPT":
+                if not candidate["CPT_Qualified"]:
+                    continue
+            else:
+                if not candidate["Computer_Qualified"]:
+                    continue
+
+            # 4A️⃣ Try UR Seat First
+            if post["UR"] > 0:
+                posts.at[p_index, "UR"] -= 1
+                df.at[index, "Allocated_Post"] = post_name
+                df.at[index, "Allocated_Category"] = "UR"
                 break
 
-            df_final.at[idx, "Allotted_Post"] = post
-            df_final.at[idx, "Allotted_Category"] = "UR"
-
-            post_info["Cutoff"]["UR"] = candidate["Merit_Score"]
-            ur_vac -= 1
-
-        post_info["Vacancy"]["UR"] = ur_vac
-
-        # -------------------------
-        # STEP 2 – Reserved Seats
-        # -------------------------
-        for category in ["OBC", "EWS", "SC", "ST"]:
-
-            cat_vac = post_info["Vacancy"][category]
-
-            if cat_vac <= 0:
-                continue
-
-            reserved_candidates = eligible_df[
-                (eligible_df["Category"] == category) &
-                (eligible_df["Allotted_Post"].isna())
-            ].sort_values(by="Merit_Score", ascending=False)
-
-            for idx, candidate in reserved_candidates.iterrows():
-                if cat_vac <= 0:
+            # 4B️⃣ Then Try Reserved Category
+            if category in ["OBC", "EWS", "SC", "ST"]:
+                if post[category] > 0:
+                    posts.at[p_index, category] -= 1
+                    df.at[index, "Allocated_Post"] = post_name
+                    df.at[index, "Allocated_Category"] = category
                     break
 
-                df_final.at[idx, "Allotted_Post"] = post
-                df_final.at[idx, "Allotted_Category"] = category
+        # Stop checking posts if allocated
+        if df.at[index, "Allocated_Post"] is not None:
+            continue
 
-                post_info["Cutoff"][category] = candidate["Merit_Score"]
-                cat_vac -= 1
+    # -------------------------------
+    # 5️⃣ Cutoff Calculation
+    # -------------------------------
 
-            post_info["Vacancy"][category] = cat_vac
+    allocated_df = df[df["Allocated_Post"].notnull()].copy()
 
-    return vacancy_tracker, df_final
+    cutoff_result = (
+        allocated_df
+        .groupby(["Allocated_Post", "Allocated_Category"])
+        ["Total Marks"]
+        .min()
+        .reset_index()
+        .rename(columns={"Total Marks": "Cutoff"})
+    )
 
+    return cutoff_result, df
 
 # ---------------- APP UI ---------------- #
 
@@ -395,6 +349,7 @@ if df_main is not None:
 
 else:
     st.warning("⚠️ CSV files not found.")
+
 
 
 
