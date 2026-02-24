@@ -326,7 +326,7 @@ cutoff_dict_to_table(result["Real_Cutoff"], "📊 Real SSC Cutoffs")
 cutoff_dict_to_table(result["Predicted_Cutoff"], "📈 Predicted Cutoffs (All Qualified)")
 
     # Predicted Allotment
-    predicted_post = result_df[
+predicted_post = result_df[
         result_df["Your Status"] == "⭐ HIGH"
     ]["Post"].head(1)
 
@@ -350,5 +350,6 @@ cutoff_dict_to_table(result["Predicted_Cutoff"], "📈 Predicted Cutoffs (All Qu
 
 else:
     st.warning("⚠️ CSV files not found.")
+
 
 
