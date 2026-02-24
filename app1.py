@@ -226,14 +226,14 @@ def run_allocation(df, posts, force_qualified=False):
     # Run BOTH Simulations
     # -------------------------------
 
-    real_cutoff, real_df = run_allocation(df_final, posts_df, force_qualified=False)
+real_cutoff, real_df = run_allocation(df_final, posts_df, force_qualified=False)
 
-    predicted_cutoff, predicted_df = run_allocation(df_final, posts_df, force_qualified=True)
+predicted_cutoff, predicted_df = run_allocation(df_final, posts_df, force_qualified=True)
 
-    return {
+return {
         "Real_Cutoff": real_cutoff,
         "Predicted_Cutoff": predicted_cutoff
-    }, real_df, predicted_df
+}, real_df, predicted_df
 # ---------------- APP UI ---------------- #
 
 st.title("🏆 SSC CGL 2025 Real SSC Rule Predictor")
@@ -360,6 +360,7 @@ if df_main is not None:
 
 else:
     st.warning("⚠️ CSV files not found.")
+
 
 
 
