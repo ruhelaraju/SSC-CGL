@@ -340,15 +340,20 @@ fig = px.histogram(df_final, x="Main Paper Marks", title="Score Distribution")
 st.plotly_chart(fig, use_container_width=True)
 
     # PDF
-pdf = generate_pdf(result_df)
-st.download_button(
+if csv_uploaded:   # whatever your real condition is
+
+    pdf = generate_pdf(result_df)
+
+    st.download_button(
         "⬇️ Download Full SSC Report",
         data=pdf,
         file_name="SSC_CGL_SSC_Rule_Report.pdf",
         mime="application/pdf"
-)
-            else:
-            st.warning("⚠️ CSV files not found.")
+    )
+
+else:
+    st.warning("⚠️ CSV files not found.")
+
 
 
 
