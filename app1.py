@@ -340,7 +340,7 @@ fig = px.histogram(df_final, x="Main Paper Marks", title="Score Distribution")
 st.plotly_chart(fig, use_container_width=True)
 
     # PDF
-if csv_uploaded:   # whatever your real condition is
+if df_main:   # whatever your real condition is
 
     pdf = generate_pdf(result_df)
 
@@ -353,6 +353,7 @@ if csv_uploaded:   # whatever your real condition is
 
 else:
     st.warning("⚠️ CSV files not found.")
+
 
 
 
