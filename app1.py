@@ -115,13 +115,11 @@ def get_full_vacancy_list():
 
 def ssc_real_allocation(df_final, posts_df, mode="real"):
 
-    import pandas as pd
-
     df = df_final.copy()
     posts = posts_df.copy()
 
     # -------------------------------
-    # 1️⃣ Define Qualification Rules
+    # Qualification Rules
     # -------------------------------
 
     cpt_cutoff = {
@@ -141,92 +139,106 @@ def ssc_real_allocation(df_final, posts_df, mode="real"):
     }
 
     # -------------------------------
-    # 2️⃣ Apply Qualification Filters
+    # Qualification Filtering
     # -------------------------------
 
     if mode == "real":
 
-        def is_cpt_qualified(row):
-            return row["Computer Marks"] >= cpt_cutoff.get(row["Category"], 0)
+        df["CPT_Qualified"] = df.apply(
+            lambda r: r["Computer Marks"] >= cpt_cutoff.get(r["Category"], 0),
+            axis=1
+        )
 
-        def is_computer_qualified(row):
-            return row["Computer Marks"] >= computer_cutoff.get(row["Category"], 0)
-
-        df["CPT_Qualified"] = df.apply(is_cpt_qualified, axis=1)
-        df["Computer_Qualified"] = df.apply(is_computer_qualified, axis=1)
+        df["Computer_Qualified"] = df.apply(
+            lambda r: r["Computer Marks"] >= computer_cutoff.get(r["Category"], 0),
+            axis=1
+        )
 
     else:
-        # Simulation Mode → Everyone qualified
         df["CPT_Qualified"] = True
         df["Computer_Qualified"] = True
 
     # -------------------------------
-    # 3️⃣ Sort By Merit (High to Low)
+    # Sort by Main Paper Marks
     # -------------------------------
 
-    df = df.sort_values("Total Marks", ascending=False).reset_index(drop=True)
+    df = df.sort_values("Main Paper Marks", ascending=False).reset_index(drop=True)
 
     df["Allocated_Post"] = None
     df["Allocated_Category"] = None
 
-    vacancy_tracker = []
-
     # -------------------------------
-    # 4️⃣ Allocation Logic
+    # Allocation Logic
     # -------------------------------
 
-    for index, candidate in df.iterrows():
+    for idx, candidate in df.iterrows():
 
         category = candidate["Category"]
 
-        for p_index, post in posts.iterrows():
+        for p_idx, post in posts.iterrows():
 
-            post_name = post["Post Name"]
-            post_type = post["Post Type"]  # "CPT" or "Non-CPT"
+            post_name = post["Post"]
+            is_cpt = post["IsCPT"]
+            is_stat = post["IsStat"]
 
-            # Qualification Check
-            if post_type == "CPT":
-                if not candidate["CPT_Qualified"]:
-                    continue
-            else:
-                if not candidate["Computer_Qualified"]:
-                    continue
+            # CPT condition
+            if is_cpt and not candidate["CPT_Qualified"]:
+                continue
 
-            # 4A️⃣ Try UR Seat First
+            # Computer condition
+            if not candidate["Computer_Qualified"]:
+                continue
+
+            # STAT condition (only for statistical posts)
+            if is_stat and candidate.get("Stat Marks", 0) <= 0:
+                continue
+
+            # 1️⃣ Fill UR seat first
             if post["UR"] > 0:
-                posts.at[p_index, "UR"] -= 1
-                df.at[index, "Allocated_Post"] = post_name
-                df.at[index, "Allocated_Category"] = "UR"
+                posts.at[p_idx, "UR"] -= 1
+                df.at[idx, "Allocated_Post"] = post_name
+                df.at[idx, "Allocated_Category"] = "UR"
                 break
 
-            # 4B️⃣ Then Try Reserved Category
+            # 2️⃣ Fill reserved seat
             if category in ["OBC", "EWS", "SC", "ST"]:
                 if post[category] > 0:
-                    posts.at[p_index, category] -= 1
-                    df.at[index, "Allocated_Post"] = post_name
-                    df.at[index, "Allocated_Category"] = category
+                    posts.at[p_idx, category] -= 1
+                    df.at[idx, "Allocated_Post"] = post_name
+                    df.at[idx, "Allocated_Category"] = category
                     break
 
-        # Stop checking posts if allocated
-        if df.at[index, "Allocated_Post"] is not None:
+        if df.at[idx, "Allocated_Post"] is not None:
             continue
 
     # -------------------------------
-    # 5️⃣ Cutoff Calculation
+    # Cutoff Calculation
     # -------------------------------
 
-    allocated_df = df[df["Allocated_Post"].notnull()].copy()
+    allocated = df[df["Allocated_Post"].notnull()]
 
-    cutoff_result = (
-        allocated_df
+    cutoff_df = (
+        allocated
         .groupby(["Allocated_Post", "Allocated_Category"])
-        ["Total Marks"]
+        ["Main Paper Marks"]
         .min()
         .reset_index()
-        .rename(columns={"Total Marks": "Cutoff"})
     )
 
-    return cutoff_result, df
+    # Convert to dictionary format (since your UI expects dict)
+    vacancy_result = {}
+
+    for _, row in cutoff_df.iterrows():
+        post = row["Allocated_Post"]
+        cat = row["Allocated_Category"]
+        cutoff = row["Main Paper Marks"]
+
+        if post not in vacancy_result:
+            vacancy_result[post] = {"Cutoff": {}}
+
+        vacancy_result[post]["Cutoff"][cat] = cutoff
+
+    return vacancy_result, df
 
 # ---------------- APP UI ---------------- #
 
@@ -349,6 +361,7 @@ if df_main is not None:
 
 else:
     st.warning("⚠️ CSV files not found.")
+
 
 
 
