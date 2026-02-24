@@ -115,59 +115,109 @@ def get_full_vacancy_list():
 
 def ssc_real_allocation(df_final, posts_df, comp_cutoff):
 
-    df_sorted = df_final.sort_values(by="Main Paper Marks", ascending=False).copy()
-    df_sorted["Allotted_Post"] = None
+    df_final = df_final.copy()
+    df_final["Allotted_Post"] = None
+    df_final["Allotted_Category"] = None
 
     vacancy_tracker = {}
 
+    # -----------------------------
+    # Initialize vacancy structure
+    # -----------------------------
     for _, row in posts_df.iterrows():
         vacancy_tracker[row["Post"]] = {
-        "Level": row["Level"],
-        "UR": row["UR"],
-        "SC": row["SC"],
-        "ST": row["ST"],
-        "OBC": row["OBC"],
-        "EWS": row["EWS"],
-        "Total": row["Total"],
-        "IsCPT": row["IsCPT"],
-        "IsStat": row["IsStat"],
-        "Cutoff": 0
-    }
+            "Level": row["Level"],
+            "Vacancy": {
+                "UR": row["UR"],
+                "SC": row["SC"],
+                "ST": row["ST"],
+                "OBC": row["OBC"],
+                "EWS": row["EWS"],
+            },
+            "IsCPT": row["IsCPT"],
+            "IsStat": row["IsStat"],
+            "Cutoff": {
+                "UR": 0,
+                "SC": 0,
+                "ST": 0,
+                "OBC": 0,
+                "EWS": 0
+            }
+        }
 
-    for idx, candidate in df_sorted.iterrows():
+    # ---------------------------------------
+    # Process each post separately (Important)
+    # ---------------------------------------
+    for post in vacancy_tracker.keys():
 
-        candidate_score = candidate["Main Paper Marks"]
-        candidate_cat = candidate["Category"]
-        candidate_stat = candidate.get("Stat Marks", 0)
+        post_info = vacancy_tracker[post]
 
-        for post in vacancy_tracker.keys():
+        # Create merit score
+        if post_info["IsStat"]:
+            df_final["Merit_Score"] = df_final["Main Paper Marks"] + df_final["Stat Marks"]
+        else:
+            df_final["Merit_Score"] = df_final["Main Paper Marks"]
 
-            post_info = vacancy_tracker[post]
+        # Apply eligibility filters
+        eligible_df = df_final[df_final["Allotted_Post"].isna()].copy()
 
-            score = candidate_score + candidate_stat if post_info["IsStat"] else candidate_score
+        if post_info["IsStat"]:
+            eligible_df = eligible_df[eligible_df["Stat Marks"] > 0]
 
-            if post_info["IsStat"] and candidate_stat == 0:
-                continue
+        if post_info["IsCPT"]:
+            eligible_df = eligible_df[eligible_df["Computer Marks"] >= comp_cutoff]
 
-            if post_info["IsCPT"] and candidate["Computer Marks"] < comp_cutoff:
-                continue
+        # Sort by merit
+        eligible_df = eligible_df.sort_values(
+            by="Merit_Score",
+            ascending=False
+        )
 
-            # UR first
-            if post_info["UR"] > 0:
-                post_info["UR"] -= 1
-                post_info["Cutoff"] = score
-                df_sorted.at[idx, "Allotted_Post"] = post
+        # -----------------------------
+        # STEP 1 – Fill UR seats
+        # -----------------------------
+        ur_vac = post_info["Vacancy"]["UR"]
+
+        for idx, candidate in eligible_df.iterrows():
+            if ur_vac <= 0:
                 break
 
-            # Reserved
-            if post_info.get(candidate_cat, 0) > 0:
-                post_info[candidate_cat] -= 1
-                post_info["Cutoff"] = score
-                df_sorted.at[idx, "Allotted_Post"] = post
-                break
+            df_final.at[idx, "Allotted_Post"] = post
+            df_final.at[idx, "Allotted_Category"] = "UR"
 
-    return vacancy_tracker, df_sorted
+            post_info["Cutoff"]["UR"] = candidate["Merit_Score"]
+            ur_vac -= 1
 
+        post_info["Vacancy"]["UR"] = ur_vac
+
+        # --------------------------------
+        # STEP 2 – Fill Reserved Category
+        # --------------------------------
+        for category in ["OBC", "EWS", "SC", "ST"]:
+
+            cat_vac = post_info["Vacancy"][category]
+
+            if cat_vac <= 0:
+                continue
+
+            reserved_candidates = eligible_df[
+                (eligible_df["Category"] == category) &
+                (eligible_df["Allotted_Post"].isna())
+            ].sort_values(by="Merit_Score", ascending=False)
+
+            for idx, candidate in reserved_candidates.iterrows():
+                if cat_vac <= 0:
+                    break
+
+                df_final.at[idx, "Allotted_Post"] = post
+                df_final.at[idx, "Allotted_Category"] = category
+
+                post_info["Cutoff"][category] = candidate["Merit_Score"]
+                cat_vac -= 1
+
+            post_info["Vacancy"][category] = cat_vac
+
+    return vacancy_tracker, df_final
 
 # ---------------- PDF ---------------- #
 
@@ -267,7 +317,7 @@ if df_main is not None:
 
     for post, info in vacancy_result.items():
 
-        cutoff = info["Cutoff"]
+        cutoff = info["Cutoff"].get(u_cat, 0)
 
         if cutoff > 0 and u_marks >= cutoff:
             chance = "⭐ HIGH"
@@ -320,6 +370,7 @@ if df_main is not None:
 
 else:
     st.warning("⚠️ CSV files not found.")
+
 
 
 
