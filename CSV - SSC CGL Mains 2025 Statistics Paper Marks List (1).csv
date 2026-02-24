@@ -1,4 +1,4 @@
-﻿SN.,Name,Category,Gender,Statistics Marks,Main Paper Marks,Statistics + Main(Without Computer),Computer Marks,Status
+﻿SN.,Name,Category,Gender,Statistics Marks,Main Paper Marks,Total Marks,Computer Marks,Status
 1,JAY***RMA,SC,male,144.5,362,506.5,26,Qualified
 2,RIH***LAM,UR,female,163.5,335,498.5,16,Failed
 3,BOG*****************DDY,UR,male,149.5,338,487.5,22,Qualified
@@ -2204,3 +2204,4 @@
 2203,MD *******MAD,OBC,male,62.5,153,215.5,14,Failed
 2204,RAJ******ROJ,SC,male,30,157,187,7,Failed
 2205,MAY******DAV,OBC,male,20.5,162,182.5,11,Failed
+
