@@ -291,11 +291,39 @@ if df_main is not None:
     st.subheader("📊 SSC Final Cutoff (Simulated)")
     st.dataframe(result_df, use_container_width=True)
 
-    st.subheader("Real Cutoffs")
-    st.write(result["Real_Cutoff"])
+    # ---------------- TABLE FORMAT CUT-OFF DISPLAY ---------------- #
 
-    st.subheader("Predicted Cutoffs (All Qualified)")
-    st.write(result["Predicted_Cutoff"])
+def cutoff_dict_to_table(cutoff_dict, title):
+    rows = []
+
+    for post, data in cutoff_dict.items():
+        cutoffs = data.get("Cutoff", {})
+
+        row = {
+            "Post": post,
+            "UR": cutoffs.get("UR", ""),
+            "OBC": cutoffs.get("OBC", ""),
+            "EWS": cutoffs.get("EWS", ""),
+            "SC": cutoffs.get("SC", ""),
+            "ST": cutoffs.get("ST", "")
+        }
+
+        rows.append(row)
+
+    df_table = pd.DataFrame(rows)
+
+    st.subheader(title)
+    st.dataframe(
+        df_table.sort_values("Post"),
+        use_container_width=True
+    )
+
+
+# Show Real Cutoff Table
+cutoff_dict_to_table(result["Real_Cutoff"], "📊 Real SSC Cutoffs")
+
+# Show Predicted Cutoff Table
+cutoff_dict_to_table(result["Predicted_Cutoff"], "📈 Predicted Cutoffs (All Qualified)")
 
     # Predicted Allotment
     predicted_post = result_df[
@@ -322,4 +350,5 @@ if df_main is not None:
 
 else:
     st.warning("⚠️ CSV files not found.")
+
 
