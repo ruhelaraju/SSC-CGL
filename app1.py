@@ -113,120 +113,124 @@ def get_full_vacancy_list():
 
 # ---------------- SSC REAL ENGINE ---------------- #
 
-def ssc_real_allocation(df_final, posts_df, mode="real"):
+def ssc_real_allocation(df_final, posts_df):
 
-    df = df_final.copy()
-    posts = posts_df.copy()
+    def run_allocation(df, posts, force_qualified=False):
 
-    # -------------------------------
-    # Qualification Rules
-    # -------------------------------
+        df = df.copy()
+        posts = posts.copy()
 
-    cpt_cutoff = {"UR": 27, "OBC": 24, "EWS": 24, "SC": 21, "ST": 21}
-    computer_cutoff = {"UR": 18, "OBC": 15, "EWS": 15, "SC": 12, "ST": 12}
+        cpt_cutoff = {"UR": 27, "OBC": 24, "EWS": 24, "SC": 21, "ST": 21}
+        computer_cutoff = {"UR": 18, "OBC": 15, "EWS": 15, "SC": 12, "ST": 12}
 
-    # -------------------------------
-    # Qualification Filtering (FAST)
-    # -------------------------------
+        # -------------------------------
+        # Qualification Logic
+        # -------------------------------
 
-    if mode == "real":
+        if force_qualified:
+            df["CPT_Qualified"] = True
+            df["Computer_Qualified"] = True
+        else:
+            df["CPT_Qualified"] = (
+                df["Computer Marks"] >= df["Category"].map(cpt_cutoff)
+            )
+            df["Computer_Qualified"] = (
+                df["Computer Marks"] >= df["Category"].map(computer_cutoff)
+            )
 
-        df["CPT_Qualified"] = (
-            df["Computer Marks"]
-            >= df["Category"].map(cpt_cutoff)
-        )
+        # -------------------------------
+        # Sort
+        # -------------------------------
 
-        df["Computer_Qualified"] = (
-            df["Computer Marks"]
-            >= df["Category"].map(computer_cutoff)
-        )
+        df = df.sort_values("Main Paper Marks", ascending=False).reset_index(drop=True)
 
-    else:
-        df["CPT_Qualified"] = True
-        df["Computer_Qualified"] = True
+        df["Allocated_Post"] = None
+        df["Allocated_Category"] = None
 
-    # -------------------------------
-    # Sort once
-    # -------------------------------
+        vacancy = posts.to_dict("index")
 
-    df = df.sort_values("Main Paper Marks", ascending=False).reset_index(drop=True)
+        col_post = df.columns.get_loc("Allocated_Post")
+        col_cat = df.columns.get_loc("Allocated_Category")
 
-    df["Allocated_Post"] = None
-    df["Allocated_Category"] = None
+        # -------------------------------
+        # Allocation
+        # -------------------------------
 
-    # -------------------------------
-    # Convert posts to dict (FASTER)
-    # -------------------------------
+        for idx, candidate in enumerate(df.itertuples(index=False)):
 
-    vacancy = posts.to_dict("index")
+            category = candidate.Category
+            cpt_ok = candidate.CPT_Qualified
+            comp_ok = candidate.Computer_Qualified
+            stat_marks = getattr(candidate, "Stat Marks", 0)
 
-    # -------------------------------
-    # Allocation (FASTER LOOP)
-    # -------------------------------
-
-    for idx, candidate in enumerate(df.itertuples(index=False)):
-
-        category = candidate.Category
-        cpt_ok = candidate.CPT_Qualified
-        comp_ok = candidate.Computer_Qualified
-        stat_marks = getattr(candidate, "Stat Marks", 0)
-
-        if not comp_ok:
-            continue
-
-        for p_idx in vacancy:
-
-            post = vacancy[p_idx]
-
-            if post["IsCPT"] and not cpt_ok:
+            if not comp_ok:
                 continue
 
-            if post["IsStat"] and stat_marks <= 0:
-                continue
+            for p_idx in vacancy:
 
-            # 1️⃣ UR first (same as before)
-            if post["UR"] > 0:
-                post["UR"] -= 1
-                df.iat[idx, df.columns.get_loc("Allocated_Post")] = post["Post"]
-                df.iat[idx, df.columns.get_loc("Allocated_Category")] = "UR"
-                break
+                post = vacancy[p_idx]
 
-            # 2️⃣ Reserved seat
-            if category in ["OBC", "EWS", "SC", "ST"]:
-                if post[category] > 0:
-                    post[category] -= 1
-                    df.iat[idx, df.columns.get_loc("Allocated_Post")] = post["Post"]
-                    df.iat[idx, df.columns.get_loc("Allocated_Category")] = category
+                if post["IsCPT"] and not cpt_ok:
+                    continue
+
+                if post["IsStat"] and stat_marks <= 0:
+                    continue
+
+                # UR first
+                if post["UR"] > 0:
+                    post["UR"] -= 1
+                    df.iat[idx, col_post] = post["Post"]
+                    df.iat[idx, col_cat] = "UR"
                     break
 
+                # Reserved
+                if category in ["OBC", "EWS", "SC", "ST"]:
+                    if post[category] > 0:
+                        post[category] -= 1
+                        df.iat[idx, col_post] = post["Post"]
+                        df.iat[idx, col_cat] = category
+                        break
+
+        # -------------------------------
+        # Cutoff Calculation
+        # -------------------------------
+
+        allocated = df[df["Allocated_Post"].notnull()]
+
+        cutoff_df = (
+            allocated
+            .groupby(["Allocated_Post", "Allocated_Category"])
+            ["Main Paper Marks"]
+            .min()
+            .reset_index()
+        )
+
+        result = {}
+
+        for _, row in cutoff_df.iterrows():
+            post = row["Allocated_Post"]
+            cat = row["Allocated_Category"]
+            cutoff = row["Main Paper Marks"]
+
+            if post not in result:
+                result[post] = {"Cutoff": {}}
+
+            result[post]["Cutoff"][cat] = cutoff
+
+        return result, df
+
     # -------------------------------
-    # Cutoff Calculation (UNCHANGED)
+    # Run BOTH Simulations
     # -------------------------------
 
-    allocated = df[df["Allocated_Post"].notnull()]
+    real_cutoff, real_df = run_allocation(df_final, posts_df, force_qualified=False)
 
-    cutoff_df = (
-        allocated
-        .groupby(["Allocated_Post", "Allocated_Category"])
-        ["Main Paper Marks"]
-        .min()
-        .reset_index()
-    )
+    predicted_cutoff, predicted_df = run_allocation(df_final, posts_df, force_qualified=True)
 
-    vacancy_result = {}
-
-    for _, row in cutoff_df.iterrows():
-        post = row["Allocated_Post"]
-        cat = row["Allocated_Category"]
-        cutoff = row["Main Paper Marks"]
-
-        if post not in vacancy_result:
-            vacancy_result[post] = {"Cutoff": {}}
-
-        vacancy_result[post]["Cutoff"][cat] = cutoff
-
-    return vacancy_result, df
-
+    return {
+        "Real_Cutoff": real_cutoff,
+        "Predicted_Cutoff": predicted_cutoff
+    }, real_df, predicted_df
 # ---------------- APP UI ---------------- #
 
 st.title("🏆 SSC CGL 2025 Real SSC Rule Predictor")
@@ -312,6 +316,11 @@ if df_main is not None:
 
     st.subheader("📊 SSC Final Cutoff (Simulated)")
     st.dataframe(result_df, use_container_width=True)
+    st.subheader("Real Cutoffs")
+    st.write(result["Real_Cutoff"])
+
+    st.subheader("Predicted Cutoffs (All Qualified)")
+    st.write(result["Predicted_Cutoff"])
 
     # -------- Predicted Allotment -------- #
     predicted_post = result_df[
@@ -348,6 +357,7 @@ if df_main is not None:
 
 else:
     st.warning("⚠️ CSV files not found.")
+
 
 
 
