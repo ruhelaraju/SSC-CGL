@@ -118,7 +118,7 @@ result, real_df, predicted_df = ssc_real_allocation(
     posts_df
 )
 
-    def run_allocation(df, posts, force_qualified=False):
+def run_allocation(df, posts, force_qualified=False):
 
         df = df.copy()
         posts = posts.copy()
@@ -360,6 +360,7 @@ if df_main is not None:
 
 else:
     st.warning("⚠️ CSV files not found.")
+
 
 
 
