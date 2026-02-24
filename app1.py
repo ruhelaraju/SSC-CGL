@@ -273,35 +273,6 @@ def ssc_real_allocation(
 
     return vacancy_tracker, df_final
 
-# ---------------- PDF ---------------- #
-
-def generate_pdf(df):
-    buffer = io.BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=pagesizes.A4)
-    elements = []
-
-    font_name = "Helvetica"
-    if CID_FONT_SUPPORTED:
-        try:
-            pdfmetrics.registerFont(UnicodeCIDFont('HYSMyeongJo-Medium'))
-            font_name = 'HYSMyeongJo-Medium'
-        except:
-            pass
-
-    data = [df.columns.tolist()] + df.astype(str).values.tolist()
-
-    table = Table(data, repeatRows=1)
-    table.setStyle(TableStyle([
-        ('FONTNAME', (0, 0), (-1, -1), font_name),
-        ('FONTSIZE', (0, 0), (-1, -1), 7),
-        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
-    ]))
-
-    elements.append(table)
-    doc.build(elements)
-    buffer.seek(0)
-    return buffer
-
 
 # ---------------- APP UI ---------------- #
 
@@ -424,6 +395,7 @@ if df_main is not None:
 
 else:
     st.warning("⚠️ CSV files not found.")
+
 
 
 
