@@ -122,36 +122,23 @@ def ssc_real_allocation(df_final, posts_df, mode="real"):
     # Qualification Rules
     # -------------------------------
 
-    cpt_cutoff = {
-        "UR": 27,
-        "OBC": 24,
-        "EWS": 24,
-        "SC": 21,
-        "ST": 21
-    }
-
-    computer_cutoff = {
-        "UR": 18,
-        "OBC": 15,
-        "EWS": 15,
-        "SC": 12,
-        "ST": 12
-    }
+    cpt_cutoff = {"UR": 27, "OBC": 24, "EWS": 24, "SC": 21, "ST": 21}
+    computer_cutoff = {"UR": 18, "OBC": 15, "EWS": 15, "SC": 12, "ST": 12}
 
     # -------------------------------
-    # Qualification Filtering
+    # Qualification Filtering (FAST)
     # -------------------------------
 
     if mode == "real":
 
-        df["CPT_Qualified"] = df.apply(
-            lambda r: r["Computer Marks"] >= cpt_cutoff.get(r["Category"], 0),
-            axis=1
+        df["CPT_Qualified"] = (
+            df["Computer Marks"]
+            >= df["Category"].map(cpt_cutoff)
         )
 
-        df["Computer_Qualified"] = df.apply(
-            lambda r: r["Computer Marks"] >= computer_cutoff.get(r["Category"], 0),
-            axis=1
+        df["Computer_Qualified"] = (
+            df["Computer Marks"]
+            >= df["Category"].map(computer_cutoff)
         )
 
     else:
@@ -159,7 +146,7 @@ def ssc_real_allocation(df_final, posts_df, mode="real"):
         df["Computer_Qualified"] = True
 
     # -------------------------------
-    # Sort by Main Paper Marks
+    # Sort once
     # -------------------------------
 
     df = df.sort_values("Main Paper Marks", ascending=False).reset_index(drop=True)
@@ -168,51 +155,52 @@ def ssc_real_allocation(df_final, posts_df, mode="real"):
     df["Allocated_Category"] = None
 
     # -------------------------------
-    # Allocation Logic
+    # Convert posts to dict (FASTER)
     # -------------------------------
 
-    for idx, candidate in df.iterrows():
+    vacancy = posts.to_dict("index")
 
-        category = candidate["Category"]
+    # -------------------------------
+    # Allocation (FASTER LOOP)
+    # -------------------------------
 
-        for p_idx, post in posts.iterrows():
+    for idx, candidate in enumerate(df.itertuples(index=False)):
 
-            post_name = post["Post"]
-            is_cpt = post["IsCPT"]
-            is_stat = post["IsStat"]
+        category = candidate.Category
+        cpt_ok = candidate.CPT_Qualified
+        comp_ok = candidate.Computer_Qualified
+        stat_marks = getattr(candidate, "Stat Marks", 0)
 
-            # CPT condition
-            if is_cpt and not candidate["CPT_Qualified"]:
-                continue
-
-            # Computer condition
-            if not candidate["Computer_Qualified"]:
-                continue
-
-            # STAT condition (only for statistical posts)
-            if is_stat and candidate.get("Stat Marks", 0) <= 0:
-                continue
-
-            # 1️⃣ Fill UR seat first
-            if post["UR"] > 0:
-                posts.at[p_idx, "UR"] -= 1
-                df.at[idx, "Allocated_Post"] = post_name
-                df.at[idx, "Allocated_Category"] = "UR"
-                break
-
-            # 2️⃣ Fill reserved seat
-            if category in ["OBC", "EWS", "SC", "ST"]:
-                if post[category] > 0:
-                    posts.at[p_idx, category] -= 1
-                    df.at[idx, "Allocated_Post"] = post_name
-                    df.at[idx, "Allocated_Category"] = category
-                    break
-
-        if df.at[idx, "Allocated_Post"] is not None:
+        if not comp_ok:
             continue
 
+        for p_idx in vacancy:
+
+            post = vacancy[p_idx]
+
+            if post["IsCPT"] and not cpt_ok:
+                continue
+
+            if post["IsStat"] and stat_marks <= 0:
+                continue
+
+            # 1️⃣ UR first (same as before)
+            if post["UR"] > 0:
+                post["UR"] -= 1
+                df.iat[idx, df.columns.get_loc("Allocated_Post")] = post["Post"]
+                df.iat[idx, df.columns.get_loc("Allocated_Category")] = "UR"
+                break
+
+            # 2️⃣ Reserved seat
+            if category in ["OBC", "EWS", "SC", "ST"]:
+                if post[category] > 0:
+                    post[category] -= 1
+                    df.iat[idx, df.columns.get_loc("Allocated_Post")] = post["Post"]
+                    df.iat[idx, df.columns.get_loc("Allocated_Category")] = category
+                    break
+
     # -------------------------------
-    # Cutoff Calculation
+    # Cutoff Calculation (UNCHANGED)
     # -------------------------------
 
     allocated = df[df["Allocated_Post"].notnull()]
@@ -225,7 +213,6 @@ def ssc_real_allocation(df_final, posts_df, mode="real"):
         .reset_index()
     )
 
-    # Convert to dictionary format (since your UI expects dict)
     vacancy_result = {}
 
     for _, row in cutoff_df.iterrows():
@@ -361,6 +348,7 @@ if df_main is not None:
 
 else:
     st.warning("⚠️ CSV files not found.")
+
 
 
 
