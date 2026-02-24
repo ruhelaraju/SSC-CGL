@@ -229,8 +229,8 @@ u_stat = st.sidebar.number_input("Statistics Marks", 0.0, 200.0, 0.0)
 u_cat = st.sidebar.selectbox("Category", ["UR", "OBC", "EWS", "SC", "ST"])
 u_comp = st.sidebar.number_input("Computer Marks", 0.0, 60.0, 25.0)
 
-MAIN_FILE = "in.csv"
-STAT_FILE = "stat.csv"
+MAIN_FILE = "CSV - SSC CGL Mains 2025 Marks List.xlsx - in.csv"
+STAT_FILE = "CSV - SSC CGL Mains 2025 Statistics Paper Marks List (1).csv"
 
 df_main, main_key = load_and_clean_data(MAIN_FILE)
 df_stat, stat_key = load_stat_data(STAT_FILE)
@@ -322,3 +322,4 @@ if df_main is not None:
 
 else:
     st.warning("⚠️ CSV files not found.")
+
