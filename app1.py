@@ -330,26 +330,27 @@ predicted_post = result_df[
         result_df["Your Status"] == "⭐ HIGH"
     ]["Post"].head(1)
 
-    if not predicted_post.empty:
+if not predicted_post.empty:
         st.success(f"🎯 Predicted Allotted Post: {predicted_post.values[0]}")
-    else:
+else:
         st.error("No Allotment Based on Current Score")
 
     # Chart
-    fig = px.histogram(df_final, x="Main Paper Marks", title="Score Distribution")
-    st.plotly_chart(fig, use_container_width=True)
+fig = px.histogram(df_final, x="Main Paper Marks", title="Score Distribution")
+st.plotly_chart(fig, use_container_width=True)
 
     # PDF
-    pdf = generate_pdf(result_df)
-    st.download_button(
+pdf = generate_pdf(result_df)
+st.download_button(
         "⬇️ Download Full SSC Report",
         data=pdf,
         file_name="SSC_CGL_SSC_Rule_Report.pdf",
         mime="application/pdf"
-    )
+)
 
 else:
     st.warning("⚠️ CSV files not found.")
+
 
 
 
