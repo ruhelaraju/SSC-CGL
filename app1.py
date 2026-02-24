@@ -347,8 +347,9 @@ st.download_button(
         file_name="SSC_CGL_SSC_Rule_Report.pdf",
         mime="application/pdf"
 )
-        else:
-        st.warning("⚠️ CSV files not found.")
+            else:
+            st.warning("⚠️ CSV files not found.")
+
 
 
 
