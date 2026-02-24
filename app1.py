@@ -331,16 +331,18 @@ predicted_post = result_df[
     ]["Post"].head(1)
 
 if not predicted_post.empty:
-        st.success(f"🎯 Predicted Allotted Post: {predicted_post.values[0]}")
+    st.success(f"🎯 Predicted Allotted Post: {predicted_post.values[0]}")
 else:
-        st.error("No Allotment Based on Current Score")
+    st.error("No Allotment Based on Current Score")
 
-    # Chart
+
+# Chart
 fig = px.histogram(df_final, x="Main Paper Marks", title="Score Distribution")
 st.plotly_chart(fig, use_container_width=True)
 
-    # PDF
-if df_main:   # whatever your real condition is
+
+# PDF
+if df_main is not None and not df_main.empty:
 
     pdf = generate_pdf(result_df)
 
@@ -353,6 +355,7 @@ if df_main:   # whatever your real condition is
 
 else:
     st.warning("⚠️ CSV files not found.")
+
 
 
 
