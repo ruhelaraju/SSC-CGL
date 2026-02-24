@@ -113,7 +113,7 @@ def get_full_vacancy_list():
 
 # ---------------- SSC REAL ENGINE ---------------- #
 
-def result, real_df, predicted_df = ssc_real_allocation(
+result, real_df, predicted_df = ssc_real_allocation(
     df_final,
     posts_df
 )
@@ -360,6 +360,7 @@ if df_main is not None:
 
 else:
     st.warning("⚠️ CSV files not found.")
+
 
 
 
